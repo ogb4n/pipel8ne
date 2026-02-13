@@ -10,13 +10,13 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }],
-  
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
