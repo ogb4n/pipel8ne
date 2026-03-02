@@ -1,24 +1,28 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Dépendances
+node_modules/
 
-node_modules
-dist
-dist-ssr
+# Build
+dist/
+dist-ssr/
+
+# Environnement
+.env
+.env.local
+.env.*.local
 *.local
 
-# Editor directories and files
+# Base de données SQLite (si utilisée localement)
+backend/data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.idea/

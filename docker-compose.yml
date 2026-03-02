@@ -1,0 +1,34 @@
+services:
+  # ─── Base de données PostgreSQL (dev) ───────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pipel8ne
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: pipel8ne_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipel8ne -d pipel8ne_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Backend Fastify ─────────────────────────────────────────────────────────
+  backend:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://pipel8ne:dev_password@db:5432/pipel8ne_dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

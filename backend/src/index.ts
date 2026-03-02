@@ -1,0 +1,48 @@
+import "dotenv/config";
+import "reflect-metadata";
+import Fastify from "fastify";
+import { AppDataSource } from "./infrastructure/database/client";
+import swaggerPlugin from "./api/plugins/swagger";
+import staticPlugin from "./api/plugins/static";
+import registerRoutes from "./api/routes";
+
+const isDev = process.env.NODE_ENV === "development";
+
+const app = Fastify({
+  logger: isDev ? { transport: { target: "pino-pretty", options: { colorize: true } } } : true,
+});
+
+const start = async () => {
+  try {
+    // 1. Connexion BDD
+    await AppDataSource.initialize();
+    app.log.info("Base de données connectée");
+
+    // 2. Swagger (dev uniquement — doit être enregistré avant les routes)
+    await app.register(swaggerPlugin);
+
+    // 3. Routes API
+    await registerRoutes(app);
+
+    // 4. Fichiers statiques + SPA fallback (doit être en dernier)
+    await app.register(staticPlugin);
+
+    await app.listen({ port: 3000, host: "0.0.0.0" });
+
+    if (isDev) {
+      app.log.info("Swagger UI disponible sur http://localhost:3000/docs");
+    }
+  } catch (err) {
+    app.log.error(err);
+    await AppDataSource.destroy();
+    process.exit(1);
+  }
+};
+
+// Déconnexion propre de la BDD à l'arrêt du process
+process.on("SIGINT", async () => {
+  await AppDataSource.destroy();
+  process.exit(0);
+});
+
+start();
