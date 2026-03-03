@@ -1,11 +1,11 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import { connectDatabase, disconnectDatabase } from "./infrastructure/database/client";
-import swaggerPlugin from "./http/plugins/swagger";
-import staticPlugin from "./http/plugins/static";
-import jwtPlugin from "./http/plugins/jwt";
-import containerPlugin from "./http/plugins/container";
-import registerRoutes from "./http/routes";
+import swaggerPlugin from "./Application/plugins/swagger";
+import staticPlugin from "./Application/plugins/static";
+import jwtPlugin from "./Application/plugins/jwt";
+import containerPlugin from "./Application/plugins/container";
+import registerRoutes from "./Application/routes";
 
 const isDev = process.env.NODE_ENV === "development";
 
