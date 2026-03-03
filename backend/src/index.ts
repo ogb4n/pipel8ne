@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { connectDatabase, disconnectDatabase } from "./infrastructure/database/client";
 import swaggerPlugin from "./api/plugins/swagger";
 import staticPlugin from "./api/plugins/static";
+import jwtPlugin from "./api/plugins/jwt";
 import registerRoutes from "./api/routes";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -20,7 +21,10 @@ const start = async () => {
     // 2. Swagger (dev uniquement — doit être enregistré avant les routes)
     await app.register(swaggerPlugin);
 
-    // 3. Routes API
+    // 3. JWT plugin (doit être enregistré avant les routes pour que app.authenticate soit disponible)
+    await app.register(jwtPlugin);
+
+    // 4. Routes API
     await registerRoutes(app);
 
     // 4. Fichiers statiques + SPA fallback (doit être en dernier)

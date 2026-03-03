@@ -16,7 +16,11 @@ export class UserService {
     return this.userRepository.findById(id);
   }
 
-  create(data: { email: string; name?: string }): Promise<User> {
+  getByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  create(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
     return this.userRepository.create(data);
   }
 

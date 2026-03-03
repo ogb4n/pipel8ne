@@ -1,10 +1,13 @@
 import { FastifyInstance } from "fastify";
 import { UserService } from "../../../domain/user/UserService";
 import { UserRepository } from "../../../infrastructure/database/repositories/UserRepository";
-import { userSchema, userListSchema, createUserBodySchema, notFoundSchema } from "./users.schemas";
+import { userSchema, userListSchema, notFoundSchema } from "./users.schemas";
 
 export default async function userRoutes(app: FastifyInstance) {
   const userService = new UserService(new UserRepository());
+
+  // Toutes les routes de ce scope sont protégées par JWT
+  app.addHook("onRequest", app.authenticate);
 
   // GET /api/users
   app.get(
@@ -13,6 +16,7 @@ export default async function userRoutes(app: FastifyInstance) {
       schema: {
         tags: ["users"],
         summary: "Liste tous les utilisateurs",
+        security: [{ bearerAuth: [] }],
         response: { 200: userListSchema },
       },
     },
@@ -26,6 +30,7 @@ export default async function userRoutes(app: FastifyInstance) {
       schema: {
         tags: ["users"],
         summary: "Récupère un utilisateur par ID",
+        security: [{ bearerAuth: [] }],
         params: {
           type: "object",
           properties: { id: { type: "string" } },
@@ -40,23 +45,6 @@ export default async function userRoutes(app: FastifyInstance) {
     },
   );
 
-  // POST /api/users
-  app.post<{ Body: { email: string; name?: string } }>(
-    "/api/users",
-    {
-      schema: {
-        tags: ["users"],
-        summary: "Crée un utilisateur",
-        body: createUserBodySchema,
-        response: { 201: userSchema },
-      },
-    },
-    async (request, reply) => {
-      const user = await userService.create(request.body);
-      return reply.status(201).send(user);
-    },
-  );
-
   // DELETE /api/users/:id
   app.delete<{ Params: { id: string } }>(
     "/api/users/:id",
@@ -64,6 +52,7 @@ export default async function userRoutes(app: FastifyInstance) {
       schema: {
         tags: ["users"],
         summary: "Supprime un utilisateur",
+        security: [{ bearerAuth: [] }],
         params: {
           type: "object",
           properties: { id: { type: "string" } },
