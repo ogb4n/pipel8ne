@@ -3,7 +3,7 @@ import { IUserRepository } from "./IUserRepository";
 
 /**
  * Service domaine User — contient les cas d'usage métier.
- * Dépend uniquement du port IUserRepository, pas de TypeORM.
+ * Dépend uniquement du port IUserRepository, pas de Mongoose.
  */
 export class UserService {
   constructor(private readonly userRepository: IUserRepository) {}
@@ -12,7 +12,7 @@ export class UserService {
     return this.userRepository.findAll();
   }
 
-  getById(id: number): Promise<User | null> {
+  getById(id: string): Promise<User | null> {
     return this.userRepository.findById(id);
   }
 
@@ -20,7 +20,7 @@ export class UserService {
     return this.userRepository.create(data);
   }
 
-  delete(id: number): Promise<void> {
+  delete(id: string): Promise<void> {
     return this.userRepository.delete(id);
   }
 }

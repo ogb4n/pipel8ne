@@ -1,12 +1,13 @@
 /**
  * Schémas JSON utilisés par les routes User (Fastify / OpenAPI).
  * Centralisés ici pour éviter la duplication entre routes et doc Swagger.
+ * L'identifiant est désormais un string (ObjectId MongoDB sérialisé).
  */
 
 export const userSchema = {
   type: "object",
   properties: {
-    id: { type: "integer" },
+    id: { type: "string" },
     email: { type: "string" },
     name: { type: "string", nullable: true },
     createdAt: { type: "string" },

@@ -28,13 +28,13 @@ export default async function userRoutes(app: FastifyInstance) {
         summary: "Récupère un utilisateur par ID",
         params: {
           type: "object",
-          properties: { id: { type: "integer" } },
+          properties: { id: { type: "string" } },
         },
         response: { 200: userSchema, 404: notFoundSchema },
       },
     },
     async (request, reply) => {
-      const user = await userService.getById(Number(request.params.id));
+      const user = await userService.getById(request.params.id);
       if (!user) return reply.status(404).send({ message: "Utilisateur introuvable" });
       return user;
     },
@@ -66,13 +66,13 @@ export default async function userRoutes(app: FastifyInstance) {
         summary: "Supprime un utilisateur",
         params: {
           type: "object",
-          properties: { id: { type: "integer" } },
+          properties: { id: { type: "string" } },
         },
         response: { 204: { type: "null" } },
       },
     },
     async (request, reply) => {
-      await userService.delete(Number(request.params.id));
+      await userService.delete(request.params.id);
       return reply.status(204).send();
     },
   );
