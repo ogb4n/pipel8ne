@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { ITokenService } from "../../domain/auth/ITokenService";
+import { ITokenService } from "../domain/auth/ITokenService";
 
 /**
  * Implémentation de ITokenService via @fastify/jwt.

@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 import { FastifyInstance } from "fastify";
 import { UserRepository } from "../../infrastructure/database/repositories/UserRepository";
-import { JwtTokenService } from "../../infrastructure/token/JwtTokenService";
+import { JwtTokenService } from "../../infrastructure/JwtTokenService";
 import { UserService } from "../../domain/user/UserService";
 import { AuthService } from "../../domain/auth/AuthService";
 
