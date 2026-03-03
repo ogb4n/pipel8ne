@@ -2,9 +2,9 @@ export const registerBodySchema = {
   type: "object",
   required: ["email", "password"],
   properties: {
-    email:    { type: "string", format: "email" },
+    email: { type: "string", format: "email" },
     password: { type: "string", minLength: 8 },
-    name:     { type: "string" },
+    name: { type: "string" },
   },
   additionalProperties: false,
 } as const;
@@ -13,7 +13,7 @@ export const loginBodySchema = {
   type: "object",
   required: ["email", "password"],
   properties: {
-    email:    { type: "string", format: "email" },
+    email: { type: "string", format: "email" },
     password: { type: "string" },
   },
   additionalProperties: false,
@@ -31,14 +31,14 @@ export const refreshBodySchema = {
 export const authResponseSchema = {
   type: "object",
   properties: {
-    accessToken:  { type: "string" },
+    accessToken: { type: "string" },
     refreshToken: { type: "string" },
     user: {
       type: "object",
       properties: {
-        id:        { type: "string" },
-        email:     { type: "string" },
-        name:      { type: "string", nullable: true },
+        id: { type: "string" },
+        email: { type: "string" },
+        name: { type: "string", nullable: true },
         createdAt: { type: "string" },
       },
     },

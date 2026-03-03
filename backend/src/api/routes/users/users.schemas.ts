@@ -23,8 +23,8 @@ export const createUserBodySchema = {
   type: "object",
   required: ["email"],
   properties: {
-    email:    { type: "string", format: "email" },
-    name:     { type: "string" },
+    email: { type: "string", format: "email" },
+    name: { type: "string" },
   },
 } as const;
 

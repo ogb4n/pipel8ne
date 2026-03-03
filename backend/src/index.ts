@@ -4,6 +4,7 @@ import { connectDatabase, disconnectDatabase } from "./infrastructure/database/c
 import swaggerPlugin from "./api/plugins/swagger";
 import staticPlugin from "./api/plugins/static";
 import jwtPlugin from "./api/plugins/jwt";
+import containerPlugin from "./api/plugins/container";
 import registerRoutes from "./api/routes";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -24,10 +25,13 @@ const start = async () => {
     // 3. JWT plugin (doit être enregistré avant les routes pour que app.authenticate soit disponible)
     await app.register(jwtPlugin);
 
-    // 4. Routes API
+    // 4. Conteneur DI (services et repositories)
+    await app.register(containerPlugin);
+
+    // 5. Routes API
     await registerRoutes(app);
 
-    // 4. Fichiers statiques + SPA fallback (doit être en dernier)
+    // 6. Fichiers statiques + SPA fallback (doit être en dernier)
     await app.register(staticPlugin);
 
     await app.listen({ port: 3000, host: "0.0.0.0" });

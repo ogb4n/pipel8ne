@@ -1,6 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { AuthService, AuthError } from "../../../domain/auth/AuthService";
-import { UserRepository } from "../../../infrastructure/database/repositories/UserRepository";
+import { AuthError } from "../../../domain/auth/AuthService";
 import {
   registerBodySchema,
   loginBodySchema,
@@ -11,7 +10,6 @@ import {
 } from "./auth.schemas";
 
 export default async function authRoutes(app: FastifyInstance) {
-  const authService = new AuthService(new UserRepository());
 
   // POST /api/auth/register
   app.post<{ Body: { email: string; password: string; name?: string } }>(
@@ -26,11 +24,8 @@ export default async function authRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const user = await authService.register(request.body);
-        const payload = { sub: user.id, email: user.email };
-        const accessToken  = app.jwt.sign(payload, { expiresIn: "15m" });
-        const refreshToken = app.jwt.sign({ sub: user.id }, { expiresIn: "7d" });
-        return reply.status(201).send({ accessToken, refreshToken, user });
+        const result = await app.authService.register(request.body);
+        return reply.status(201).send(result);
       } catch (err) {
         if (err instanceof AuthError && err.code === "EMAIL_IN_USE") {
           return reply.status(409).send({ message: err.message });
@@ -53,14 +48,8 @@ export default async function authRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const user = await authService.validateCredentials(
-          request.body.email,
-          request.body.password,
-        );
-        const payload = { sub: user.id, email: user.email };
-        const accessToken  = app.jwt.sign(payload, { expiresIn: "15m" });
-        const refreshToken = app.jwt.sign({ sub: user.id }, { expiresIn: "7d" });
-        return reply.status(200).send({ accessToken, refreshToken, user });
+        const result = await app.authService.login(request.body.email, request.body.password);
+        return reply.status(200).send(result);
       } catch (err) {
         if (err instanceof AuthError && err.code === "INVALID_CREDENTIALS") {
           return reply.status(401).send({ message: err.message });
@@ -83,12 +72,8 @@ export default async function authRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const decoded = app.jwt.verify<{ sub: string }>(request.body.refreshToken);
-        const accessToken = app.jwt.sign(
-          { sub: decoded.sub },
-          { expiresIn: "15m" },
-        );
-        return reply.status(200).send({ accessToken });
+        const result = await app.authService.refresh(request.body.refreshToken);
+        return reply.status(200).send(result);
       } catch {
         return reply.status(401).send({ message: "Refresh token invalide ou expiré" });
       }

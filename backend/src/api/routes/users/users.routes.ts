@@ -1,11 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { UserService } from "../../../domain/user/UserService";
-import { UserRepository } from "../../../infrastructure/database/repositories/UserRepository";
 import { userSchema, userListSchema, notFoundSchema } from "./users.schemas";
 
 export default async function userRoutes(app: FastifyInstance) {
-  const userService = new UserService(new UserRepository());
-
   // Toutes les routes de ce scope sont protégées par JWT
   app.addHook("onRequest", app.authenticate);
 
@@ -20,7 +16,7 @@ export default async function userRoutes(app: FastifyInstance) {
         response: { 200: userListSchema },
       },
     },
-    async () => userService.getAll(),
+    async () => app.userService.getAll(),
   );
 
   // GET /api/users/:id
@@ -39,7 +35,7 @@ export default async function userRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const user = await userService.getById(request.params.id);
+      const user = await app.userService.getById(request.params.id);
       if (!user) return reply.status(404).send({ message: "Utilisateur introuvable" });
       return user;
     },
@@ -61,7 +57,7 @@ export default async function userRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      await userService.delete(request.params.id);
+      await app.userService.delete(request.params.id);
       return reply.status(204).send();
     },
   );
