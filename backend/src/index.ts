@@ -1,7 +1,6 @@
 import "dotenv/config";
-import "reflect-metadata";
 import Fastify from "fastify";
-import { AppDataSource } from "./infrastructure/database/client";
+import { connectDatabase, disconnectDatabase } from "./infrastructure/database/client";
 import swaggerPlugin from "./api/plugins/swagger";
 import staticPlugin from "./api/plugins/static";
 import registerRoutes from "./api/routes";
@@ -14,8 +13,8 @@ const app = Fastify({
 
 const start = async () => {
   try {
-    // 1. Connexion BDD
-    await AppDataSource.initialize();
+    // 1. Connexion MongoDB
+    await connectDatabase();
     app.log.info("Base de données connectée");
 
     // 2. Swagger (dev uniquement — doit être enregistré avant les routes)
@@ -34,14 +33,14 @@ const start = async () => {
     }
   } catch (err) {
     app.log.error(err);
-    await AppDataSource.destroy();
+    await disconnectDatabase();
     process.exit(1);
   }
 };
 
 // Déconnexion propre de la BDD à l'arrêt du process
 process.on("SIGINT", async () => {
-  await AppDataSource.destroy();
+  await disconnectDatabase();
   process.exit(0);
 });
 

@@ -1,30 +1,11 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from "typeorm";
-
 /**
- * Entité domaine User.
- * Les décorateurs TypeORM restent ici par pragmatisme — ils décrivent le modèle,
- * pas la plomberie technique. L'implémentation concrète est dans Infrastructure.
+ * Entité domaine User — interface pure, sans couplage à un ORM.
+ * L'identifiant est un string (ObjectId MongoDB sérialisé).
  */
-@Entity("users")
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
+export interface User {
+  id: string;
   email: string;
-
-  @Column({ nullable: true, type: "varchar" })
   name: string | null;
-
-  @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
   updatedAt: Date;
 }
