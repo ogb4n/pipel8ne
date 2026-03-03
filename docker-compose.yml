@@ -1,18 +1,19 @@
 services:
-  # ─── Base de données PostgreSQL (dev) ───────────────────────────────────────
+  # ─── Base de données MongoDB (dev) ──────────────────────────────────────────
   db:
-    image: postgres:16-alpine
+    image: mongo:7
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pipel8ne
-      POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: pipel8ne_dev
+      MONGO_INITDB_ROOT_USERNAME: pipel8ne
+      MONGO_INITDB_ROOT_PASSWORD: dev_password
+      MONGO_INITDB_DATABASE: pipel8ne_dev
     ports:
-      - "5433:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pipel8ne -d pipel8ne_dev"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,7 +24,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://pipel8ne:dev_password@db:5432/pipel8ne_dev
+      DATABASE_URL: mongodb://pipel8ne:dev_password@db:27017/pipel8ne_dev?authSource=admin
     ports:
       - "3000:3000"
     depends_on:
@@ -31,4 +32,4 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  mongo_data:
