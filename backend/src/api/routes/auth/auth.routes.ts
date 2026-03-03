@@ -10,7 +10,6 @@ import {
 } from "./auth.schemas";
 
 export default async function authRoutes(app: FastifyInstance) {
-
   // POST /api/auth/register
   app.post<{ Body: { email: string; password: string; name?: string } }>(
     "/api/auth/register",
