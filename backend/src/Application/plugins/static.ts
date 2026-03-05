@@ -5,7 +5,7 @@ import path from "path";
 
 /**
  * Plugin fichiers statiques — sert le build Vite du frontend.
- * SPA fallback : toute route inconnue renvoie index.html.
+ * SPA fallback : toute route inconnue renvoie index.html
  */
 export default fp(async (app: FastifyInstance) => {
   await app.register(fastifyStatic, {

@@ -4,6 +4,7 @@ import {
   registerBodySchema,
   loginBodySchema,
   refreshBodySchema,
+  logoutBodySchema,
   authResponseSchema,
   refreshResponseSchema,
   errorSchema,
@@ -80,16 +81,18 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   // POST /api/auth/logout
-  app.post(
+  app.post<{ Body: { refreshToken: string } }>(
     "/api/auth/logout",
     {
       schema: {
         tags: ["auth"],
-        summary: "Déconnecte l'utilisateur (côté client, supprimez vos tokens)",
+        summary: "Déconnecte l'utilisateur en révoquant son refresh token",
+        body: logoutBodySchema,
         response: { 200: { type: "object", properties: { message: { type: "string" } } } },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
+      await app.authService.logout(request.body.refreshToken);
       return reply.status(200).send({ message: "Déconnecté avec succès" });
     },
   );

@@ -25,6 +25,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: mongodb://pipel8ne:dev_password@db:27017/pipel8ne_dev?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:?SECRETS_ENCRYPTION_KEY is required}
     ports:
       - "3000:3000"
     depends_on:

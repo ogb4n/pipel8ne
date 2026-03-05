@@ -1,0 +1,15 @@
+meta {
+  name: Get Public Projects
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/api/projects/public
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

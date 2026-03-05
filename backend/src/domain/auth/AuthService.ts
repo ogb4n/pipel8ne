@@ -1,8 +1,10 @@
 import argon2 from "argon2";
-import { IUserRepository } from "../user/IUserRepository";
-import { ITokenService } from "./ITokenService";
-import { PublicUser } from "../user/PublicUser";
-import { User } from "../user/User";
+import crypto from "crypto";
+import { IUserRepository } from "../user/IUserRepository.js";
+import { ITokenService } from "./ITokenService.js";
+import { IRefreshTokenRepository } from "./IRefreshTokenRepository.js";
+import { PublicUser } from "../user/PublicUser.js";
+import { User } from "../user/User.js";
 
 export type AuthTokens = {
   accessToken: string;
@@ -14,6 +16,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly tokenService: ITokenService,
+    private readonly refreshTokenRepository: IRefreshTokenRepository,
   ) {}
 
   /**
@@ -30,7 +33,7 @@ export class AuthService {
       passwordHash,
     });
 
-    return this.buildTokens(user);
+    return this.buildAndStoreTokens(user);
   }
 
   /**
@@ -43,16 +46,49 @@ export class AuthService {
     const valid = await argon2.verify(user.passwordHash, password);
     if (!valid) throw new AuthError("INVALID_CREDENTIALS", "Identifiants incorrects");
 
-    return this.buildTokens(user);
+    return this.buildAndStoreTokens(user);
   }
 
   /**
-   * Renouvelle un access token depuis un refresh token valide.
+   * Renouvelle un access token et un refresh token (rotation).
    */
-  refresh(refreshToken: string): { accessToken: string } {
+  async refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    // 1. Verify JWT signature
     const decoded = this.tokenService.verifyRefresh(refreshToken);
-    // On re-signe avec sub uniquement — on n'a pas l'email dans le refresh token
-    return { accessToken: this.tokenService.signAccess({ sub: decoded.sub, email: "" }) };
+    // 2. Check token exists and is not revoked in DB
+    const stored = await this.refreshTokenRepository.findByTokenHash(this.hashToken(refreshToken));
+    if (!stored || stored.isRevoked || stored.expiresAt < new Date()) {
+      throw new AuthError("INVALID_CREDENTIALS", "Refresh token invalide ou révoqué");
+    }
+    // 3. Rotate: revoke old, issue new
+    await this.refreshTokenRepository.revokeByTokenHash(this.hashToken(refreshToken));
+    const newRefreshToken = this.tokenService.signRefresh({ sub: decoded.sub });
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await this.refreshTokenRepository.create({
+      tokenHash: this.hashToken(newRefreshToken),
+      userId: decoded.sub,
+      expiresAt,
+    });
+    const accessToken = this.tokenService.signAccess({ sub: decoded.sub, email: "" });
+    return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  /**
+   * Révoque le refresh token (déconnexion).
+   */
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokenRepository.revokeByTokenHash(this.hashToken(refreshToken));
+  }
+
+  private async buildAndStoreTokens(user: User): Promise<AuthTokens> {
+    const tokens = this.buildTokens(user);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await this.refreshTokenRepository.create({
+      tokenHash: this.hashToken(tokens.refreshToken),
+      userId: user.id,
+      expiresAt,
+    });
+    return tokens;
   }
 
   private buildTokens(user: User): AuthTokens {
@@ -62,6 +98,10 @@ export class AuthService {
       refreshToken: this.tokenService.signRefresh({ sub: user.id }),
       user: publicUser,
     };
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
 }
 

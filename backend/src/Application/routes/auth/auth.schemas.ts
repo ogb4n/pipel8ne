@@ -49,7 +49,17 @@ export const refreshResponseSchema = {
   type: "object",
   properties: {
     accessToken: { type: "string" },
+    refreshToken: { type: "string" },
   },
+} as const;
+
+export const logoutBodySchema = {
+  type: "object",
+  required: ["refreshToken"],
+  properties: {
+    refreshToken: { type: "string" },
+  },
+  additionalProperties: false,
 } as const;
 
 export const errorSchema = {

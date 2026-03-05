@@ -1,0 +1,38 @@
+meta {
+  name: Upsert Graph
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{BASE_URL}}/api/projects/{{projectId}}/graph
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "viewport": { "x": 0, "y": 0, "zoom": 1 },
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "default",
+        "positionX": 100,
+        "positionY": 150,
+        "data": {
+          "label": "Source Node",
+          "description": "Entry point of the pipeline",
+          "params": { "baseParameters": { "timeout": 30 } },
+          "env": { "ENV": "production" },
+          "secrets": { "API_KEY": "my-secret-api-key" }
+        }
+      }
+    ],
+    "edges": [
+    ]
+  }
+}
