@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { userSchema, userListSchema, notFoundSchema } from "./users.schemas";
+import { userSchema, userListSchema, notFoundSchema } from "./users.schemas.js";
 
 export default async function userRoutes(app: FastifyInstance) {
   // Toutes les routes de ce scope sont protégées par JWT

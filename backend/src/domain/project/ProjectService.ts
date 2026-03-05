@@ -17,8 +17,10 @@ export class ProjectService {
     return this.projectRepository.findByOwner(ownerId);
   }
 
-  getById(id: string): Promise<Project | null> {
-    return this.projectRepository.findById(id);
+  async getById(id: string): Promise<Project> {
+    const project = await this.projectRepository.findById(id);
+    if (!project) throw new NotFoundError("Project not found");
+    return project;
   }
 
   create(data: {

@@ -118,9 +118,11 @@ export default async function projectRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const project = await app.projectService.getById(request.params.id);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      return project;
+      try {
+        return await app.projectService.getById(request.params.id);
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 

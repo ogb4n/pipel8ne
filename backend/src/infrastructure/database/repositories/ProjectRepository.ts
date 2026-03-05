@@ -1,6 +1,6 @@
-import { ProjectModel } from "../models/ProjectModel";
-import { Project, ProjectVisibility } from "../../../Domain/project/Project";
-import { IProjectRepository } from "../../../Domain/project/IProjectRepository";
+import { ProjectModel } from "../models/ProjectModel.js";
+import { Project, ProjectVisibility } from "../../../Domain/project/Project.js";
+import { IProjectRepository } from "../../../Domain/project/IProjectRepository.js";
 
 /**
  * Implémentation Mongoose du port IProjectRepository.

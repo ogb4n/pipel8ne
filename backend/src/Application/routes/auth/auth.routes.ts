@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { AuthError } from "../../../Domain/auth/AuthService";
+import { AuthError } from "../../../Domain/auth/AuthService.js";
 import {
   registerBodySchema,
   loginBodySchema,
@@ -8,7 +8,7 @@ import {
   authResponseSchema,
   refreshResponseSchema,
   errorSchema,
-} from "./auth.schemas";
+} from "./auth.schemas.js";
 
 export default async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/register

@@ -19,15 +19,6 @@ export const userListSchema = {
   items: userSchema,
 } as const;
 
-export const createUserBodySchema = {
-  type: "object",
-  required: ["email"],
-  properties: {
-    email: { type: "string", format: "email" },
-    name: { type: "string" },
-  },
-} as const;
-
 export const notFoundSchema = {
   type: "object",
   properties: { message: { type: "string" } },
