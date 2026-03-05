@@ -1,0 +1,15 @@
+meta {
+  name: Delete Graph
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{BASE_URL}}/api/projects/{{projectId}}/graph
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

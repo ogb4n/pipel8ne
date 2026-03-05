@@ -1,0 +1,30 @@
+meta {
+  name: Create Project
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{BASE_URL}}/api/projects
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "My Pipeline",
+    "path": "/pipelines/my-pipeline",
+    "provider": "github",
+    "visibility": "private"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("projectId", res.body.id);
+  }
+}

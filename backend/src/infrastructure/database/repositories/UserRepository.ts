@@ -7,11 +7,13 @@ import { IUserRepository } from "../../../domain/user/IUserRepository";
  * Toute la plomberie MongoDB est confinée ici — le Domain n'y touche pas.
  */
 export class UserRepository implements IUserRepository {
+  /** Mappe un document Mongoose vers le type domain User (avec passwordHash). */
   private toUser(doc: InstanceType<typeof UserModel>): User {
     return {
       id: doc._id.toString(),
       email: doc.email,
       name: doc.name ?? null,
+      passwordHash: doc.passwordHash,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };
@@ -27,9 +29,22 @@ export class UserRepository implements IUserRepository {
     return doc ? this.toUser(doc) : null;
   }
 
-  async create(data: { email: string; name?: string }): Promise<User> {
+  async findByEmail(email: string): Promise<User | null> {
+    const doc = await UserModel.findOne({ email: email.toLowerCase().trim() });
+    return doc ? this.toUser(doc) : null;
+  }
+
+  async create(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
     const doc = await UserModel.create(data);
     return this.toUser(doc);
+  }
+
+  async updateById(
+    id: string,
+    data: Partial<Pick<User, "name" | "passwordHash">>,
+  ): Promise<User | null> {
+    const doc = await UserModel.findByIdAndUpdate(id, data, { new: true });
+    return doc ? this.toUser(doc) : null;
   }
 
   async delete(id: string): Promise<void> {

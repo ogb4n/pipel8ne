@@ -1,0 +1,28 @@
+# Compose minimal pour le développement local.
+# Démarre uniquement MongoDB — le backend tourne directement sur la machine.
+#
+# Usage :
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run dev   (dans backend/)
+
+services:
+  db:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: pipel8ne
+      MONGO_INITDB_ROOT_PASSWORD: dev_password
+      MONGO_INITDB_DATABASE: pipel8ne_dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data_dev:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data_dev:

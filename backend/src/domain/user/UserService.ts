@@ -1,23 +1,27 @@
 import { User } from "./User";
+import { PublicUser } from "./PublicUser";
 import { IUserRepository } from "./IUserRepository";
 
+function toPublicUser(user: User): PublicUser {
+  const { passwordHash: _omitted, ...pub } = user;
+  return pub;
+}
+
 /**
- * Service domaine User — contient les cas d'usage métier.
- * Dépend uniquement du port IUserRepository, pas de Mongoose.
+ * Service domaine User.
+ * Retourne des PublicUser (sans passwordHash) — la sécurité est dans le domain,
+ * pas dans la sérialisation HTTP.
  */
 export class UserService {
   constructor(private readonly userRepository: IUserRepository) {}
 
-  getAll(): Promise<User[]> {
-    return this.userRepository.findAll();
+  async getAll(): Promise<PublicUser[]> {
+    return (await this.userRepository.findAll()).map(toPublicUser);
   }
 
-  getById(id: string): Promise<User | null> {
-    return this.userRepository.findById(id);
-  }
-
-  create(data: { email: string; name?: string }): Promise<User> {
-    return this.userRepository.create(data);
+  async getById(id: string): Promise<PublicUser | null> {
+    const user = await this.userRepository.findById(id);
+    return user ? toPublicUser(user) : null;
   }
 
   delete(id: string): Promise<void> {

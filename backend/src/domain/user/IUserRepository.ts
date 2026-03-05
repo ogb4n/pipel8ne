@@ -7,6 +7,8 @@ import { User } from "./User";
 export interface IUserRepository {
   findAll(): Promise<User[]>;
   findById(id: string): Promise<User | null>;
-  create(data: { email: string; name?: string }): Promise<User>;
+  findByEmail(email: string): Promise<User | null>;
+  create(data: { email: string; name?: string; passwordHash: string }): Promise<User>;
+  updateById(id: string, data: Partial<Pick<User, "name" | "passwordHash">>): Promise<User | null>;
   delete(id: string): Promise<void>;
 }

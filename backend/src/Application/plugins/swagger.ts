@@ -20,8 +20,18 @@ export default fp(async (app: FastifyInstance) => {
       },
       tags: [
         { name: "health", description: "Santé du serveur" },
-        { name: "users", description: "Gestion des utilisateurs" },
+        { name: "auth", description: "Authentification (register / login / refresh / logout)" },
+        { name: "users", description: "Gestion des utilisateurs (protégé par JWT)" },
       ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+        },
+      },
     },
   });
 
