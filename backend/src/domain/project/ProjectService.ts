@@ -1,5 +1,6 @@
 import { IProjectRepository } from "./IProjectRepository.js";
 import { Project, ProjectVisibility } from "./Project.js";
+import { NotFoundError, ForbiddenError } from "../errors.js";
 
 export class ProjectService {
   constructor(private readonly projectRepository: IProjectRepository) {}
@@ -30,14 +31,23 @@ export class ProjectService {
     return this.projectRepository.create(data);
   }
 
-  update(
+  async update(
     id: string,
     data: Partial<Pick<Project, "name" | "path" | "provider" | "visibility">>,
-  ): Promise<Project | null> {
-    return this.projectRepository.updateById(id, data);
+    requesterId: string,
+  ): Promise<Project> {
+    const project = await this.projectRepository.findById(id);
+    if (!project) throw new NotFoundError("Project not found");
+    if (project.ownerId !== requesterId) throw new ForbiddenError("Forbidden");
+    const updated = await this.projectRepository.updateById(id, data);
+    if (!updated) throw new NotFoundError("Project not found");
+    return updated;
   }
 
-  delete(id: string): Promise<void> {
-    return this.projectRepository.delete(id);
+  async delete(id: string, requesterId: string): Promise<void> {
+    const project = await this.projectRepository.findById(id);
+    if (!project) throw new NotFoundError("Project not found");
+    if (project.ownerId !== requesterId) throw new ForbiddenError("Forbidden");
+    await this.projectRepository.delete(id);
   }
 }

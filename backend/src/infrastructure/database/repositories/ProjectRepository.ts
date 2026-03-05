@@ -1,6 +1,6 @@
 import { ProjectModel } from "../models/ProjectModel";
-import { Project, ProjectVisibility } from "../../../domain/project/Project";
-import { IProjectRepository } from "../../../domain/project/IProjectRepository";
+import { Project, ProjectVisibility } from "../../../Domain/project/Project";
+import { IProjectRepository } from "../../../Domain/project/IProjectRepository";
 
 /**
  * Implémentation Mongoose du port IProjectRepository.
@@ -20,17 +20,17 @@ export class ProjectRepository implements IProjectRepository {
   }
 
   async findAll(): Promise<Project[]> {
-    const docs = await ProjectModel.find().lean(false);
+    const docs = await ProjectModel.find();
     return docs.map((doc) => this.toProject(doc));
   }
 
   async findAllPublic(): Promise<Project[]> {
-    const docs = await ProjectModel.find({ visibility: "public" }).lean(false);
+    const docs = await ProjectModel.find({ visibility: "public" });
     return docs.map((doc) => this.toProject(doc));
   }
 
   async findByOwner(ownerId: string): Promise<Project[]> {
-    const docs = await ProjectModel.find({ ownerId }).lean(false);
+    const docs = await ProjectModel.find({ ownerId });
     return docs.map((doc) => this.toProject(doc));
   }
 

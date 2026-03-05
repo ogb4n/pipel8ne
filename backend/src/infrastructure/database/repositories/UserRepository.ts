@@ -1,6 +1,6 @@
 import { UserModel } from "../models/UserModel";
-import { User } from "../../../domain/user/User";
-import { IUserRepository } from "../../../domain/user/IUserRepository";
+import { User } from "../../../Domain/user/User";
+import { IUserRepository } from "../../../Domain/user/IUserRepository";
 
 /**
  * Implémentation Mongoose du port IUserRepository.
@@ -20,7 +20,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async findAll(): Promise<User[]> {
-    const docs = await UserModel.find().lean(false);
+    const docs = await UserModel.find();
     return docs.map((doc) => this.toUser(doc));
   }
 

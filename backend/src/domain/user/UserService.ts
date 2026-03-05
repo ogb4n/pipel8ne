@@ -1,18 +1,14 @@
-import { User } from "./User";
-import { PublicUser } from "./PublicUser";
-import { IUserRepository } from "./IUserRepository";
-
-function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _omitted, ...pub } = user;
-  return pub;
-}
+import { User } from "./User.js";
+import { PublicUser, toPublicUser } from "./PublicUser.js";
+import { IUserRepository } from "./IUserRepository.js";
+import { IUserReader } from "./IUserReader.js";
 
 /**
  * Service domaine User.
  * Retourne des PublicUser (sans passwordHash) — la sécurité est dans le domain,
  * pas dans la sérialisation HTTP.
  */
-export class UserService {
+export class UserService implements IUserReader {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async getAll(): Promise<PublicUser[]> {
@@ -26,5 +22,21 @@ export class UserService {
 
   delete(id: string): Promise<void> {
     return this.userRepository.delete(id);
+  }
+
+  /**
+   * Used internally by AuthService — returns full User including passwordHash.
+   * Not exposed as PublicUser because auth needs the hash for verification.
+   */
+  findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  /**
+   * Creates a new user. Single point of user creation across the system.
+   * Returns full User (with passwordHash) for the auth flow.
+   */
+  createUser(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
+    return this.userRepository.create(data);
   }
 }

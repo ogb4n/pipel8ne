@@ -1,22 +1,23 @@
-import { FastifyInstance } from "fastify";
-import { ITokenService } from "../domain/auth/ITokenService";
+import { ITokenService } from "../Domain/auth/ITokenService.js";
+import { IJwtSigner } from "./IJwtSigner.js";
+import { REFRESH_TOKEN_TTL } from "../Domain/auth/auth.constants.js";
 
 /**
  * Implémentation de ITokenService via @fastify/jwt.
- * Confinée dans l'infrastructure — le domain n'y touche pas.
+ * Reçoit uniquement le signer JWT, pas la FastifyInstance entière.
  */
 export class JwtTokenService implements ITokenService {
-  constructor(private readonly app: FastifyInstance) {}
+  constructor(private readonly jwt: IJwtSigner) {}
 
   signAccess(payload: { sub: string; email: string }): string {
-    return this.app.jwt.sign(payload, { expiresIn: "15m" });
+    return this.jwt.sign(payload, { expiresIn: "15m" });
   }
 
   signRefresh(payload: { sub: string }): string {
-    return this.app.jwt.sign(payload, { expiresIn: "7d" });
+    return this.jwt.sign(payload, { expiresIn: REFRESH_TOKEN_TTL });
   }
 
   verifyRefresh(token: string): { sub: string } {
-    return this.app.jwt.verify<{ sub: string }>(token);
+    return this.jwt.verify<{ sub: string }>(token);
   }
 }

@@ -89,8 +89,3 @@ export const notFoundSchema = {
   type: "object",
   properties: { message: { type: "string" } },
 } as const;
-
-/** @deprecated kept for backward compat — use pipelineSchema */
-export const graphSchema = pipelineSchema;
-/** @deprecated kept for backward compat — use updatePipelineBodySchema */
-export const upsertGraphBodySchema = updatePipelineBodySchema;

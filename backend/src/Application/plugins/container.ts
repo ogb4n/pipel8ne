@@ -1,14 +1,15 @@
 import fp from "fastify-plugin";
 import { FastifyInstance } from "fastify";
-import { UserRepository } from "../../infrastructure/database/repositories/UserRepository";
-import { JwtTokenService } from "../../infrastructure/JwtTokenService";
-import { UserService } from "../../domain/user/UserService";
-import { AuthService } from "../../domain/auth/AuthService";
-import { ProjectRepository } from "../../infrastructure/database/repositories/ProjectRepository";
-import { GraphRepository } from "../../infrastructure/database/repositories/GraphRepository";
-import { ProjectService } from "../../domain/project/ProjectService";
-import { GraphService } from "../../domain/graph/GraphService";
-import { RefreshTokenRepository } from "../../infrastructure/database/repositories/RefreshTokenRepository";
+import { UserRepository } from "../../Infrastructure/database/repositories/UserRepository";
+import { JwtTokenService } from "../../Infrastructure/JwtTokenService";
+import { UserService } from "../../Domain/user/UserService";
+import { AuthService } from "../../Domain/auth/AuthService";
+import { ProjectRepository } from "../../Infrastructure/database/repositories/ProjectRepository";
+import { GraphRepository } from "../../Infrastructure/database/repositories/GraphRepository";
+import { AesSecretsService } from "../../Infrastructure/SecretsService";
+import { ProjectService } from "../../Domain/project/ProjectService";
+import { GraphService } from "../../Domain/graph/GraphService";
+import { RefreshTokenRepository } from "../../Infrastructure/database/repositories/RefreshTokenRepository";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -26,15 +27,16 @@ declare module "fastify" {
  */
 export default fp(async function containerPlugin(app: FastifyInstance) {
   const userRepository = new UserRepository();
-  const tokenService = new JwtTokenService(app);
+  const tokenService = new JwtTokenService(app.jwt);
   const userService = new UserService(userRepository);
   const refreshTokenRepository = new RefreshTokenRepository();
-  const authService = new AuthService(userRepository, tokenService, refreshTokenRepository);
+  const authService = new AuthService(userService, tokenService, refreshTokenRepository);
 
   const projectRepository = new ProjectRepository();
-  const graphRepository = new GraphRepository();
+  const secretsService = new AesSecretsService();
+  const graphRepository = new GraphRepository(secretsService);
   const projectService = new ProjectService(projectRepository);
-  const graphService = new GraphService(graphRepository);
+  const graphService = new GraphService(graphRepository, projectRepository);
 
   app.decorate("userService", userService);
   app.decorate("authService", authService);

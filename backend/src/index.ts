@@ -1,6 +1,6 @@
 import "dotenv/config";
 import Fastify from "fastify";
-import { connectDatabase, disconnectDatabase } from "./infrastructure/database/client";
+import { connectDatabase, disconnectDatabase } from "./Infrastructure/database/client";
 import swaggerPlugin from "./Application/plugins/swagger";
 import staticPlugin from "./Application/plugins/static";
 import jwtPlugin from "./Application/plugins/jwt";

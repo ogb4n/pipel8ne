@@ -1,16 +1,16 @@
 /**
  * Routes Pipeline — gestion des pipelines associés à un projet.
- * Un projet peut avoir plusieurs pipelines.
- * Toutes les routes sont protégées par JWT et opèrent sous le préfixe
- * /api/projects/:projectId/pipelines.
+ * Toutes les routes sont protégées par JWT.
+ * L'autorisation est gérée par GraphService (couche domaine).
  */
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyReply } from "fastify";
+import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
 import {
   pipelineSchema,
   createPipelineBodySchema,
   updatePipelineBodySchema,
   notFoundSchema,
-} from "./graphs.schemas";
+} from "./graphs.schemas.js";
 
 interface ProjectParams {
   projectId: string;
@@ -43,10 +43,16 @@ interface UpdatePipelineBody {
   edges: Array<{ id: string; source: string; target: string; type: string }>;
 }
 
+function handleDomainError(err: unknown, reply: FastifyReply) {
+  if (err instanceof NotFoundError) return reply.status(404).send({ message: err.message });
+  if (err instanceof ForbiddenError) return reply.status(403).send({ message: err.message });
+  throw err;
+}
+
 export default async function pipelineRoutes(app: FastifyInstance) {
   app.addHook("onRequest", app.authenticate);
 
-  /** GET /api/projects/:projectId/pipelines — liste toutes les pipelines du projet */
+  /** GET /api/projects/:projectId/pipelines */
   app.get<{ Params: ProjectParams }>(
     "/api/projects/:projectId/pipelines",
     {
@@ -58,16 +64,15 @@ export default async function pipelineRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { projectId } = request.params;
-      const project = await app.projectService.getById(projectId);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      if (project.visibility === "private" && project.ownerId !== request.user.sub)
-        return reply.status(404).send({ message: "Project not found" });
-      return app.graphService.listByProject(projectId);
+      try {
+        return await app.graphService.listByProject(request.params.projectId, request.user.sub);
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 
-  /** POST /api/projects/:projectId/pipelines — crée une nouvelle pipeline */
+  /** POST /api/projects/:projectId/pipelines */
   app.post<{ Params: ProjectParams; Body: CreatePipelineBody }>(
     "/api/projects/:projectId/pipelines",
     {
@@ -80,21 +85,21 @@ export default async function pipelineRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { projectId } = request.params;
-      const project = await app.projectService.getById(projectId);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      if (project.ownerId !== request.user.sub)
-        return reply.status(403).send({ message: "Forbidden" });
-      const pipeline = await app.graphService.create(projectId, request.body.name, {
-        viewport: { x: 0, y: 0, zoom: 1 },
-        nodes: [],
-        edges: [],
-      });
-      return reply.status(201).send(pipeline);
+      try {
+        const pipeline = await app.graphService.create(
+          request.params.projectId,
+          request.body.name,
+          { viewport: { x: 0, y: 0, zoom: 1 }, nodes: [], edges: [] },
+          request.user.sub,
+        );
+        return reply.status(201).send(pipeline);
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 
-  /** GET /api/projects/:projectId/pipelines/:pipelineId — retourne une pipeline */
+  /** GET /api/projects/:projectId/pipelines/:pipelineId */
   app.get<{ Params: PipelineParams }>(
     "/api/projects/:projectId/pipelines/:pipelineId",
     {
@@ -106,19 +111,19 @@ export default async function pipelineRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { projectId, pipelineId } = request.params;
-      const project = await app.projectService.getById(projectId);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      if (project.visibility === "private" && project.ownerId !== request.user.sub)
-        return reply.status(404).send({ message: "Project not found" });
-      const pipeline = await app.graphService.getById(pipelineId);
-      if (!pipeline || pipeline.projectId !== projectId)
-        return reply.status(404).send({ message: "Pipeline not found" });
-      return pipeline;
+      try {
+        return await app.graphService.getById(
+          request.params.pipelineId,
+          request.params.projectId,
+          request.user.sub,
+        );
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 
-  /** PUT /api/projects/:projectId/pipelines/:pipelineId — sauvegarde le graphe */
+  /** PUT /api/projects/:projectId/pipelines/:pipelineId */
   app.put<{ Params: PipelineParams; Body: UpdatePipelineBody }>(
     "/api/projects/:projectId/pipelines/:pipelineId",
     {
@@ -131,20 +136,21 @@ export default async function pipelineRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { projectId, pipelineId } = request.params;
-      const project = await app.projectService.getById(projectId);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      if (project.ownerId !== request.user.sub)
-        return reply.status(403).send({ message: "Forbidden" });
-      const pipeline = await app.graphService.getById(pipelineId);
-      if (!pipeline || pipeline.projectId !== projectId)
-        return reply.status(404).send({ message: "Pipeline not found" });
-      const { viewport, nodes, edges } = request.body;
-      return app.graphService.update(pipelineId, { viewport, nodes, edges });
+      try {
+        const { viewport, nodes, edges } = request.body;
+        return await app.graphService.update(
+          request.params.pipelineId,
+          request.params.projectId,
+          { viewport, nodes, edges },
+          request.user.sub,
+        );
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 
-  /** DELETE /api/projects/:projectId/pipelines/:pipelineId — supprime une pipeline */
+  /** DELETE /api/projects/:projectId/pipelines/:pipelineId */
   app.delete<{ Params: PipelineParams }>(
     "/api/projects/:projectId/pipelines/:pipelineId",
     {
@@ -156,16 +162,16 @@ export default async function pipelineRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { projectId, pipelineId } = request.params;
-      const project = await app.projectService.getById(projectId);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      if (project.ownerId !== request.user.sub)
-        return reply.status(403).send({ message: "Forbidden" });
-      const pipeline = await app.graphService.getById(pipelineId);
-      if (!pipeline || pipeline.projectId !== projectId)
-        return reply.status(404).send({ message: "Pipeline not found" });
-      await app.graphService.delete(pipelineId);
-      return reply.status(204).send();
+      try {
+        await app.graphService.delete(
+          request.params.pipelineId,
+          request.params.projectId,
+          request.user.sub,
+        );
+        return reply.status(204).send();
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 }

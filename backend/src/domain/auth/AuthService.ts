@@ -1,10 +1,11 @@
 import argon2 from "argon2";
 import crypto from "crypto";
-import { IUserRepository } from "../user/IUserRepository.js";
+import { IUserReader } from "../user/IUserReader.js";
 import { ITokenService } from "./ITokenService.js";
 import { IRefreshTokenRepository } from "./IRefreshTokenRepository.js";
-import { PublicUser } from "../user/PublicUser.js";
+import { PublicUser, toPublicUser } from "../user/PublicUser.js";
 import { User } from "../user/User.js";
+import { REFRESH_TOKEN_TTL_MS } from "./auth.constants.js";
 
 export type AuthTokens = {
   accessToken: string;
@@ -14,7 +15,7 @@ export type AuthTokens = {
 
 export class AuthService {
   constructor(
-    private readonly userRepository: IUserRepository,
+    private readonly userService: IUserReader,
     private readonly tokenService: ITokenService,
     private readonly refreshTokenRepository: IRefreshTokenRepository,
   ) {}
@@ -23,11 +24,11 @@ export class AuthService {
    * Inscrit un nouvel utilisateur et retourne ses tokens JWT.
    */
   async register(data: { email: string; password: string; name?: string }): Promise<AuthTokens> {
-    const existing = await this.userRepository.findByEmail(data.email);
+    const existing = await this.userService.findByEmail(data.email);
     if (existing) throw new AuthError("EMAIL_IN_USE", "Cet email est déjà utilisé");
 
     const passwordHash = await argon2.hash(data.password);
-    const user = await this.userRepository.create({
+    const user = await this.userService.createUser({
       email: data.email,
       name: data.name,
       passwordHash,
@@ -40,7 +41,7 @@ export class AuthService {
    * Vérifie les identifiants et retourne les tokens JWT si valides.
    */
   async login(email: string, password: string): Promise<AuthTokens> {
-    const user = await this.userRepository.findByEmail(email);
+    const user = await this.userService.findByEmail(email);
     if (!user) throw new AuthError("INVALID_CREDENTIALS", "Identifiants incorrects");
 
     const valid = await argon2.verify(user.passwordHash, password);
@@ -62,14 +63,18 @@ export class AuthService {
     }
     // 3. Rotate: revoke old, issue new
     await this.refreshTokenRepository.revokeByTokenHash(this.hashToken(refreshToken));
+    const user = await this.userService.getById(decoded.sub);
     const newRefreshToken = this.tokenService.signRefresh({ sub: decoded.sub });
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
     await this.refreshTokenRepository.create({
       tokenHash: this.hashToken(newRefreshToken),
       userId: decoded.sub,
       expiresAt,
     });
-    const accessToken = this.tokenService.signAccess({ sub: decoded.sub, email: "" });
+    const accessToken = this.tokenService.signAccess({
+      sub: decoded.sub,
+      email: user?.email ?? "",
+    });
     return { accessToken, refreshToken: newRefreshToken };
   }
 
@@ -82,7 +87,7 @@ export class AuthService {
 
   private async buildAndStoreTokens(user: User): Promise<AuthTokens> {
     const tokens = this.buildTokens(user);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS); // 7 days
     await this.refreshTokenRepository.create({
       tokenHash: this.hashToken(tokens.refreshToken),
       userId: user.id,
@@ -113,9 +118,4 @@ export class AuthError extends Error {
     super(message);
     this.name = "AuthError";
   }
-}
-
-function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _omitted, ...publicUser } = user;
-  return publicUser;
 }

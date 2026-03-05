@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { AuthError } from "../../../domain/auth/AuthService";
+import { AuthError } from "../../../Domain/auth/AuthService";
 import {
   registerBodySchema,
   loginBodySchema,

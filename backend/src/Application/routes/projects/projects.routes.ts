@@ -1,16 +1,15 @@
 /**
  * Routes Project — exposition CRUD de la ressource Project via l'API REST.
- * Toutes les routes sont protégées par JWT ; l'identité du demandeur est
- * extraite de request.user.sub pour les opérations sensibles (création).
  */
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyReply } from "fastify";
+import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
 import {
   projectSchema,
   projectListSchema,
   createProjectBodySchema,
   updateProjectBodySchema,
   notFoundSchema,
-} from "./projects.schemas";
+} from "./projects.schemas.js";
 
 interface ProjectParams {
   id: string;
@@ -30,10 +29,16 @@ interface UpdateProjectBody {
   visibility?: "private" | "public";
 }
 
+function handleDomainError(err: unknown, reply: FastifyReply) {
+  if (err instanceof NotFoundError) return reply.status(404).send({ message: err.message });
+  if (err instanceof ForbiddenError) return reply.status(403).send({ message: err.message });
+  throw err;
+}
+
 export default async function projectRoutes(app: FastifyInstance) {
   app.addHook("onRequest", app.authenticate);
 
-  /** GET /api/projects — retourne tous les projets */
+  /** GET /api/projects */
   app.get(
     "/api/projects",
     {
@@ -47,7 +52,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     async () => app.projectService.getAll(),
   );
 
-  /** POST /api/projects — crée un nouveau projet pour l'utilisateur authentifié */
+  /** POST /api/projects */
   app.post<{ Body: CreateProjectBody }>(
     "/api/projects",
     {
@@ -73,7 +78,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     },
   );
 
-  /** GET /api/projects/public — retourne les projets publics */
+  /** GET /api/projects/public */
   app.get(
     "/api/projects/public",
     {
@@ -87,7 +92,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     async () => app.projectService.getAllPublic(),
   );
 
-  /** GET /api/projects/mine — retourne les projets de l'utilisateur authentifié */
+  /** GET /api/projects/mine */
   app.get(
     "/api/projects/mine",
     {
@@ -101,7 +106,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     async (request) => app.projectService.getByOwner(request.user.sub),
   );
 
-  /** GET /api/projects/:id — retourne un projet par identifiant */
+  /** GET /api/projects/:id */
   app.get<{ Params: ProjectParams }>(
     "/api/projects/:id",
     {
@@ -119,7 +124,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     },
   );
 
-  /** PATCH /api/projects/:id — met à jour un projet existant */
+  /** PATCH /api/projects/:id */
   app.patch<{ Params: ProjectParams; Body: UpdateProjectBody }>(
     "/api/projects/:id",
     {
@@ -132,17 +137,20 @@ export default async function projectRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const existing = await app.projectService.getById(request.params.id);
-      if (!existing) return reply.status(404).send({ message: "Project not found" });
-      if (existing.ownerId !== request.user.sub)
-        return reply.status(403).send({ message: "Forbidden" });
-      const project = await app.projectService.update(request.params.id, request.body);
-      if (!project) return reply.status(404).send({ message: "Project not found" });
-      return project;
+      try {
+        const project = await app.projectService.update(
+          request.params.id,
+          request.body,
+          request.user.sub,
+        );
+        return project;
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 
-  /** DELETE /api/projects/:id — supprime un projet (owner uniquement) */
+  /** DELETE /api/projects/:id */
   app.delete<{ Params: ProjectParams }>(
     "/api/projects/:id",
     {
@@ -154,12 +162,12 @@ export default async function projectRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const existing = await app.projectService.getById(request.params.id);
-      if (!existing) return reply.status(404).send({ message: "Project not found" });
-      if (existing.ownerId !== request.user.sub)
-        return reply.status(403).send({ message: "Forbidden" });
-      await app.projectService.delete(request.params.id);
-      return reply.status(204).send();
+      try {
+        await app.projectService.delete(request.params.id, request.user.sub);
+        return reply.status(204).send();
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
     },
   );
 }

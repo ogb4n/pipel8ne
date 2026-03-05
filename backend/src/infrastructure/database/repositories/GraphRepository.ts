@@ -1,15 +1,12 @@
-import { GraphModel } from "../models/GraphModel";
-import { Graph, Viewport } from "../../../domain/graph/Graph";
-import { Node } from "../../../domain/graph/Node";
-import { Edge } from "../../../domain/graph/Edge";
-import { IGraphRepository } from "../../../domain/graph/IGraphRepository";
-import { encrypt, decrypt } from "../../SecretsService";
+import { GraphModel } from "../models/GraphModel.js";
+import { Graph, Viewport } from "../../../Domain/graph/Graph.js";
+import { Node } from "../../../Domain/graph/Node.js";
+import { Edge } from "../../../Domain/graph/Edge.js";
+import { IGraphRepository } from "../../../Domain/graph/IGraphRepository.js";
+import { ISecretsService } from "../../../Domain/graph/ISecretsService.js";
 
-/**
- * Implémentation Mongoose du port IGraphRepository.
- * Chiffrement/déchiffrement des secrets confiné ici via SecretsService.
- */
 export class GraphRepository implements IGraphRepository {
+  constructor(private readonly secretsService: ISecretsService) {}
   private toGraph(doc: InstanceType<typeof GraphModel>): Graph {
     return {
       id: doc._id.toString(),
@@ -33,7 +30,10 @@ export class GraphRepository implements IGraphRepository {
           },
           env: (n.data.env as Record<string, unknown>) ?? {},
           secrets: Object.fromEntries(
-            Array.from(n.data.secrets.entries()).map(([k, v]) => [k, decrypt(v)]),
+            Array.from(n.data.secrets.entries()).map(([k, v]) => [
+              k,
+              this.secretsService.decrypt(v),
+            ]),
           ),
         },
       })),
@@ -52,7 +52,7 @@ export class GraphRepository implements IGraphRepository {
       data: {
         ...node.data,
         secrets: Object.fromEntries(
-          Object.entries(node.data.secrets).map(([k, v]) => [k, encrypt(v)]),
+          Object.entries(node.data.secrets).map(([k, v]) => [k, this.secretsService.encrypt(v)]),
         ),
       },
     };
