@@ -3,7 +3,11 @@ import { IProjectRepository } from "../project/IProjectRepository.js";
 import { Graph, Viewport } from "./Graph.js";
 import { Node } from "./Node.js";
 import { Edge } from "./Edge.js";
-import { NotFoundError, ForbiddenError } from "../errors.js";
+import { NotFoundError, ForbiddenError, ValidationError } from "../errors.js";
+import { NodeFactory } from "./nodes/NodeFactory.js";
+import { ValidationVisitor } from "./visitors/ValidationVisitor.js";
+import { ExecutionPlanVisitor } from "./visitors/ExecutionPlanVisitor.js";
+import type { ExecutionStep } from "./visitors/ExecutionPlanVisitor.js";
 
 export class GraphService {
   constructor(
@@ -58,7 +62,40 @@ export class GraphService {
     const pipeline = await this.graphRepository.findById(pipelineId);
     if (!pipeline || pipeline.projectId !== projectId)
       throw new NotFoundError("Pipeline not found");
+    this.validateNodes(data.nodes);
     return this.graphRepository.update(pipelineId, data);
+  }
+
+  /**
+   * Build a human-readable execution plan for a pipeline without saving it.
+   * Useful for dry-run previews in the UI.
+   */
+  async getExecutionPlan(
+    pipelineId: string,
+    projectId: string,
+    requesterId: string,
+  ): Promise<readonly ExecutionStep[]> {
+    const pipeline = await this.getById(pipelineId, projectId, requesterId);
+    const domainNodes = NodeFactory.fromDTOs(pipeline.nodes);
+    const planner = new ExecutionPlanVisitor();
+    for (const node of domainNodes) node.accept(planner);
+    return planner.getPlan();
+  }
+
+  // ── private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Validate node DTOs using the Visitor pattern.
+   * @throws {ValidationError} when any node has invalid configuration.
+   */
+  private validateNodes(nodes: Node[]): void {
+    const domainNodes = NodeFactory.fromDTOs(nodes);
+    const validator = new ValidationVisitor();
+    for (const node of domainNodes) node.accept(validator);
+    validator.validateGraphConstraints();
+    if (!validator.isValid()) {
+      throw new ValidationError(validator.getErrors().join("; "));
+    }
   }
 
   /** Delete a pipeline. Only the project owner can delete pipelines. */

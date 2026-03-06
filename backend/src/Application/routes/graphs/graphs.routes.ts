@@ -4,7 +4,7 @@
  * L'autorisation est gérée par GraphService (couche domaine).
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError, ValidationError } from "../../../Domain/errors.js";
 import {
   pipelineSchema,
   createPipelineBodySchema,
@@ -46,6 +46,7 @@ interface UpdatePipelineBody {
 function handleDomainError(err: unknown, reply: FastifyReply) {
   if (err instanceof NotFoundError) return reply.status(404).send({ message: err.message });
   if (err instanceof ForbiddenError) return reply.status(403).send({ message: err.message });
+  if (err instanceof ValidationError) return reply.status(400).send({ message: err.message });
   throw err;
 }
 
@@ -144,6 +145,39 @@ export default async function pipelineRoutes(app: FastifyInstance) {
           { viewport, nodes, edges },
           request.user.sub,
         );
+      } catch (err) {
+        return handleDomainError(err, reply);
+      }
+    },
+  );
+
+  /** GET /api/projects/:projectId/pipelines/:pipelineId/execution-plan
+   *
+   * Dry-run: returns the ordered execution plan without saving or running anything.
+   * Useful for previewing what a pipeline will do before triggering it.
+   */
+  app.get<{ Params: PipelineParams }>(
+    "/api/projects/:projectId/pipelines/:pipelineId/execution-plan",
+    {
+      schema: {
+        tags: ["pipelines"],
+        summary: "Get the execution plan (dry-run) for a pipeline",
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: { type: "array", items: { type: "object" } },
+          400: notFoundSchema,
+          404: notFoundSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const plan = await app.graphService.getExecutionPlan(
+          request.params.pipelineId,
+          request.params.projectId,
+          request.user.sub,
+        );
+        return reply.status(200).send(plan);
       } catch (err) {
         return handleDomainError(err, reply);
       }

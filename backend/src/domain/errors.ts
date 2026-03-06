@@ -18,3 +18,11 @@ export class ForbiddenError extends Error {
     this.name = "ForbiddenError";
   }
 }
+
+export class ValidationError extends Error {
+  readonly type = "ValidationError" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
+}
