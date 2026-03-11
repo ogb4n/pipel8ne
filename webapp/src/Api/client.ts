@@ -3,9 +3,13 @@ import type {
   Project,
   ProjectVisibility,
   Graph,
-  GraphNode,
+  Job,
   GraphEdge,
   Viewport,
+  Credential,
+  ApiKey,
+  CreateApiKeyResponse,
+  User,
 } from "./types";
 
 const BASE = "";
@@ -121,6 +125,8 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ refreshToken }),
       }),
+    registrationStatus: () =>
+      request<{ registrationEnabled: boolean }>("/api/auth/registration-status"),
   },
   projects: {
     getAll: () => request<Project[]>("/api/projects"),
@@ -156,7 +162,7 @@ export const api = {
     update: (
       projectId: string,
       pipelineId: string,
-      data: { viewport: Viewport; nodes: GraphNode[]; edges: GraphEdge[] },
+      data: { viewport: Viewport; jobs: Job[]; jobEdges: GraphEdge[] },
     ) =>
       request<Graph>(`/api/projects/${projectId}/pipelines/${pipelineId}`, {
         method: "PUT",
@@ -164,5 +170,40 @@ export const api = {
       }),
     delete: (projectId: string, pipelineId: string) =>
       request<void>(`/api/projects/${projectId}/pipelines/${pipelineId}`, { method: "DELETE" }),
+  },
+  credentials: {
+    list: () => request<Credential[]>("/api/credentials"),
+    create: (data: { provider: string; label: string; value: string }) =>
+      request<Credential>("/api/credentials", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: { label?: string; value?: string }) =>
+      request<Credential>(`/api/credentials/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/api/credentials/${id}`, { method: "DELETE" }),
+  },
+  apiKeys: {
+    list: () => request<ApiKey[]>("/api/api-keys"),
+    create: (name: string) =>
+      request<CreateApiKeyResponse>("/api/api-keys", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    revoke: (id: string) => request<ApiKey>(`/api/api-keys/${id}/revoke`, { method: "POST" }),
+    deleteKey: (id: string) => request<void>(`/api/api-keys/${id}`, { method: "DELETE" }),
+  },
+  users: {
+    me: () => request<User>("/api/users/me"),
+    list: () => request<User[]>("/api/users"),
+    create: (data: { email: string; password: string; name?: string; role?: "admin" | "user" }) =>
+      request<User>("/api/users", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: { role: "admin" | "user" }) =>
+      request<User>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/api/users/${id}`, { method: "DELETE" }),
+  },
+  admin: {
+    getSettings: () => request<{ registrationEnabled: boolean }>("/api/admin/settings"),
+    updateSettings: (data: { registrationEnabled: boolean }) =>
+      request<{ registrationEnabled: boolean }>("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
   },
 };

@@ -14,6 +14,7 @@ export class UserRepository implements IUserRepository {
       email: doc.email,
       name: doc.name ?? null,
       passwordHash: doc.passwordHash,
+      role: doc.role ?? "user",
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };
@@ -34,14 +35,23 @@ export class UserRepository implements IUserRepository {
     return doc ? this.toUser(doc) : null;
   }
 
-  async create(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
+  async create(data: {
+    email: string;
+    name?: string;
+    passwordHash: string;
+    role?: "admin" | "user";
+  }): Promise<User> {
     const doc = await UserModel.create(data);
     return this.toUser(doc);
   }
 
+  async count(): Promise<number> {
+    return UserModel.countDocuments();
+  }
+
   async updateById(
     id: string,
-    data: Partial<Pick<User, "name" | "passwordHash">>,
+    data: Partial<Pick<User, "name" | "passwordHash" | "role">>,
   ): Promise<User | null> {
     const doc = await UserModel.findByIdAndUpdate(id, data, { new: true });
     return doc ? this.toUser(doc) : null;

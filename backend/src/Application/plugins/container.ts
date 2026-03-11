@@ -10,6 +10,11 @@ import { AesSecretsService } from "../../Infrastructure/SecretsService";
 import { ProjectService } from "../../Domain/project/ProjectService";
 import { GraphService } from "../../Domain/graph/GraphService";
 import { RefreshTokenRepository } from "../../Infrastructure/database/repositories/RefreshTokenRepository";
+import { CredentialRepository } from "../../Infrastructure/database/repositories/CredentialRepository";
+import { CredentialService } from "../../Domain/credential/CredentialService";
+import { ApiKeyRepository } from "../../Infrastructure/database/repositories/ApiKeyRepository";
+import { ApiKeyService } from "../../Domain/apikey/ApiKeyService";
+import { SystemSettingsService } from "../../Infrastructure/SystemSettingsService";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -17,6 +22,8 @@ declare module "fastify" {
     authService: AuthService;
     projectService: ProjectService;
     graphService: GraphService;
+    credentialService: CredentialService;
+    apiKeyService: ApiKeyService;
   }
 }
 
@@ -30,16 +37,28 @@ export default fp(async function containerPlugin(app: FastifyInstance) {
   const tokenService = new JwtTokenService(app.jwt);
   const userService = new UserService(userRepository);
   const refreshTokenRepository = new RefreshTokenRepository();
-  const authService = new AuthService(userService, tokenService, refreshTokenRepository);
+  const systemSettingsService = new SystemSettingsService();
+  const authService = new AuthService(
+    userService,
+    tokenService,
+    refreshTokenRepository,
+    systemSettingsService,
+  );
 
   const projectRepository = new ProjectRepository();
   const secretsService = new AesSecretsService();
   const graphRepository = new GraphRepository(secretsService);
   const projectService = new ProjectService(projectRepository);
   const graphService = new GraphService(graphRepository, projectRepository);
+  const credentialRepository = new CredentialRepository();
+  const credentialService = new CredentialService(credentialRepository, secretsService);
+  const apiKeyRepository = new ApiKeyRepository();
+  const apiKeyService = new ApiKeyService(apiKeyRepository);
 
   app.decorate("userService", userService);
   app.decorate("authService", authService);
   app.decorate("projectService", projectService);
   app.decorate("graphService", graphService);
+  app.decorate("credentialService", credentialService);
+  app.decorate("apiKeyService", apiKeyService);
 });

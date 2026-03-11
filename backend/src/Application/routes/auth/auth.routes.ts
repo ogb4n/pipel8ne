@@ -1,5 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { AuthError } from "../../../Domain/auth/AuthService.js";
+import { RegistrationDisabledError } from "../../../Domain/errors.js";
+import { SystemSettingsService } from "../../../Infrastructure/SystemSettingsService.js";
 import {
   registerBodySchema,
   loginBodySchema,
@@ -11,6 +13,24 @@ import {
 } from "./auth.schemas.js";
 
 export default async function authRoutes(app: FastifyInstance) {
+  // GET /api/auth/registration-status — public
+  app.get(
+    "/api/auth/registration-status",
+    {
+      schema: {
+        tags: ["auth"],
+        summary: "Indique si l'inscription est activée (public)",
+        response: {
+          200: { type: "object", properties: { registrationEnabled: { type: "boolean" } } },
+        },
+      },
+    },
+    async () => {
+      const { registrationEnabled } = await new SystemSettingsService().getSettings();
+      return { registrationEnabled };
+    },
+  );
+
   // POST /api/auth/register
   app.post<{ Body: { email: string; password: string; name?: string } }>(
     "/api/auth/register",
@@ -19,7 +39,12 @@ export default async function authRoutes(app: FastifyInstance) {
         tags: ["auth"],
         summary: "Crée un compte utilisateur",
         body: registerBodySchema,
-        response: { 201: authResponseSchema, 409: errorSchema, 400: errorSchema },
+        response: {
+          201: authResponseSchema,
+          409: errorSchema,
+          400: errorSchema,
+          403: { type: "object", properties: { error: { type: "string" } } },
+        },
       },
     },
     async (request, reply) => {
@@ -27,6 +52,9 @@ export default async function authRoutes(app: FastifyInstance) {
         const result = await app.authService.register(request.body);
         return reply.status(201).send(result);
       } catch (err) {
+        if (err instanceof RegistrationDisabledError) {
+          return reply.status(403).send({ message: err.message });
+        }
         if (err instanceof AuthError && err.code === "EMAIL_IN_USE") {
           return reply.status(409).send({ message: err.message });
         }

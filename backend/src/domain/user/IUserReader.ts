@@ -9,5 +9,11 @@ import { PublicUser } from "./PublicUser.js";
 export interface IUserReader {
   findByEmail(email: string): Promise<User | null>;
   getById(id: string): Promise<PublicUser | null>;
-  createUser(data: { email: string; name?: string; passwordHash: string }): Promise<User>;
+  createUser(data: {
+    email: string;
+    name?: string;
+    passwordHash: string;
+    role?: "admin" | "user";
+  }): Promise<User>;
+  count(): Promise<number>;
 }

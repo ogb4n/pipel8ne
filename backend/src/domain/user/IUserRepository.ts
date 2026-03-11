@@ -8,7 +8,16 @@ export interface IUserRepository {
   findAll(): Promise<User[]>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  create(data: { email: string; name?: string; passwordHash: string }): Promise<User>;
-  updateById(id: string, data: Partial<Pick<User, "name" | "passwordHash">>): Promise<User | null>;
+  create(data: {
+    email: string;
+    name?: string;
+    passwordHash: string;
+    role?: "admin" | "user";
+  }): Promise<User>;
+  count(): Promise<number>;
+  updateById(
+    id: string,
+    data: Partial<Pick<User, "name" | "passwordHash" | "role">>,
+  ): Promise<User | null>;
   delete(id: string): Promise<void>;
 }

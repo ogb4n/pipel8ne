@@ -9,7 +9,7 @@ import { REFRESH_TOKEN_TTL } from "../Domain/auth/auth.constants.js";
 export class JwtTokenService implements ITokenService {
   constructor(private readonly jwt: IJwtSigner) {}
 
-  signAccess(payload: { sub: string; email: string }): string {
+  signAccess(payload: { sub: string; email: string; role: "admin" | "user" }): string {
     return this.jwt.sign(payload, { expiresIn: "15m" });
   }
 

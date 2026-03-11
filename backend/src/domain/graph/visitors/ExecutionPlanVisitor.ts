@@ -1,14 +1,13 @@
 /**
  * ExecutionPlanVisitor
  *
- * Builds a human-readable, ordered execution plan from a list of `BaseNode`
- * instances. Useful for logging, pipeline preview in the UI, and dry-run mode.
+ * Builds a human-readable, ordered execution plan for one Job.
+ * Instantiate one visitor per job, then iterate over the job's steps.
  *
  * Usage:
- *   const visitor = new ExecutionPlanVisitor();
- *   nodes.forEach(n => n.accept(visitor));
- *   const plan = visitor.getPlan();   // ExecutionStep[]
- *   const summary = visitor.getSummary();  // string
+ *   const visitor = new ExecutionPlanVisitor(job.id, job.name, job.runsOn);
+ *   job.steps.forEach(n => n.accept(visitor));
+ *   const plan = visitor.getJobPlan();   // JobExecutionPlan
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
 import type { TriggerNode } from "../nodes/TriggerNode.js";
@@ -32,8 +31,21 @@ export interface ExecutionStep {
   requiredSecrets: string[];
 }
 
+export interface JobExecutionPlan {
+  jobId: string;
+  jobName: string;
+  runsOn: string;
+  steps: ExecutionStep[];
+}
+
 export class ExecutionPlanVisitor implements INodeVisitor {
   private readonly steps: ExecutionStep[] = [];
+
+  constructor(
+    private readonly jobId: string,
+    private readonly jobName: string,
+    private readonly runsOn: string,
+  ) {}
 
   private addStep(
     nodeId: string,
@@ -52,16 +64,14 @@ export class ExecutionPlanVisitor implements INodeVisitor {
     });
   }
 
-  /** The ordered list of steps that will be executed. */
-  getPlan(): readonly ExecutionStep[] {
-    return this.steps;
-  }
-
-  /** A compact multi-line text summary suitable for logging. */
-  getSummary(): string {
-    return this.steps
-      .map((s) => `[${s.order}] (${s.nodeType}) ${s.label} — ${s.description}`)
-      .join("\n");
+  /** The full job execution plan including job metadata and ordered steps. */
+  getJobPlan(): JobExecutionPlan {
+    return {
+      jobId: this.jobId,
+      jobName: this.jobName,
+      runsOn: this.runsOn,
+      steps: [...this.steps],
+    };
   }
 
   // ── visit methods ────────────────────────────────────────────────────────────

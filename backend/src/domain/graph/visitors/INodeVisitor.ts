@@ -8,15 +8,15 @@
  * every existing visitor (the compiler will then point to every site that
  * needs updating).
  */
-import type { TriggerNode } from "../nodes/TriggerNode.js";
-import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
-import type { DockerNode } from "../nodes/DockerNode.js";
-import type { GitNode } from "../nodes/GitNode.js";
-import type { TestNode } from "../nodes/TestNode.js";
-import type { BuildNode } from "../nodes/BuildNode.js";
-import type { DeployNode } from "../nodes/DeployNode.js";
-import type { NotificationNode } from "../nodes/NotificationNode.js";
-import type { ConditionNode } from "../nodes/ConditionNode.js";
+import type { TriggerNode } from "../nodes/TriggerNode";
+import type { ShellCommandNode } from "../nodes/ShellCommandNode";
+import type { DockerNode } from "../nodes/DockerNode";
+import type { GitNode } from "../nodes/GitNode";
+import type { TestNode } from "../nodes/TestNode";
+import type { BuildNode } from "../nodes/BuildNode";
+import type { DeployNode } from "../nodes/DeployNode";
+import type { NotificationNode } from "../nodes/NotificationNode";
+import type { ConditionNode } from "../nodes/ConditionNode";
 
 export interface INodeVisitor {
   visitTrigger(node: TriggerNode): void;

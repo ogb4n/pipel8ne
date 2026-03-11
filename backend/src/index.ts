@@ -1,9 +1,11 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import { connectDatabase, disconnectDatabase } from "./Infrastructure/database/client";
+import { UserModel } from "./Infrastructure/database/models/UserModel.js";
 import swaggerPlugin from "./Application/plugins/swagger";
 import staticPlugin from "./Application/plugins/static";
 import jwtPlugin from "./Application/plugins/jwt";
+import adminGuardPlugin from "./Application/plugins/adminGuard";
 import containerPlugin from "./Application/plugins/container";
 import registerRoutes from "./Application/routes";
 
@@ -19,11 +21,24 @@ const start = async () => {
     await connectDatabase();
     app.log.info("Base de données connectée");
 
+    // 1b. Migration : si aucun admin n'existe, promouvoir le premier utilisateur créé
+    const adminCount = await UserModel.countDocuments({ role: "admin" });
+    if (adminCount === 0) {
+      const oldest = await UserModel.findOne().sort({ createdAt: 1 });
+      if (oldest) {
+        await UserModel.updateOne({ _id: oldest._id }, { $set: { role: "admin" } });
+        app.log.info(`Migration : ${oldest.email} promu administrateur`);
+      }
+    }
+
     // 2. Swagger (dev uniquement — doit être enregistré avant les routes)
     await app.register(swaggerPlugin);
 
     // 3. JWT plugin (doit être enregistré avant les routes pour que app.authenticate soit disponible)
     await app.register(jwtPlugin);
+
+    // 3b. Admin guard plugin
+    await app.register(adminGuardPlugin);
 
     // 4. Conteneur DI (services et repositories)
     await app.register(containerPlugin);

@@ -2,7 +2,18 @@ export interface User {
   id: string;
   email: string;
   name: string | null;
+  role: "admin" | "user";
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface Credential {
+  id: string;
+  userId: string;
+  provider: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
 }
 export interface AuthTokens {
   accessToken: string;
@@ -172,6 +183,21 @@ export type NodeParamsByType = {
   condition: ConditionNodeParams;
 };
 
+export interface ApiKey {
+  id: string;
+  userId: string;
+  name: string;
+  prefix: string;
+  isRevoked: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateApiKeyResponse extends ApiKey {
+  rawKey: string; // returned once only
+}
+
 export interface NodeParams {
   baseParameters: Record<string, unknown>;
 }
@@ -194,17 +220,36 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: string;
+  /** Optional reroute waypoint stored as flow coordinates */
+  waypoint?: { x: number; y: number };
 }
 export interface Viewport {
   x: number;
   y: number;
   zoom: number;
 }
+/**
+ * A Job groups a set of steps (nodes) that run on the same runner.
+ * stepEdges define execution order within the job.
+ * Dependencies between jobs are expressed via Graph.jobEdges.
+ */
+export interface Job {
+  id: string;
+  name: string;
+  /** Free-form runner label e.g. "ubuntu-latest", "self-hosted" */
+  runsOn: string;
+  steps: GraphNode[];
+  stepEdges: GraphEdge[];
+  /** Position of the job group node on the React Flow canvas */
+  position: { x: number; y: number };
+}
 export interface Graph {
   id: string;
   projectId: string;
   name: string;
   viewport: Viewport;
-  nodes: GraphNode[];
-  edges: GraphEdge[];
+  /** Jobs composing the pipeline. */
+  jobs: Job[];
+  /** Edges between jobs — source/target are job IDs, define execution order. */
+  jobEdges: GraphEdge[];
 }

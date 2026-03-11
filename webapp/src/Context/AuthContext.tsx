@@ -4,6 +4,7 @@ import { User } from "../Api/types";
 
 interface AuthContextType {
     user: User | null;
+    isAdmin: boolean;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, name?: string) => Promise<void>;
@@ -21,7 +22,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (stored) {
             try { setUser(JSON.parse(stored) as User); } catch { /* ignore */ }
         }
-        setIsLoading(false);
+        // Refresh user data from server to pick up new fields (e.g. role)
+        const accessToken = localStorage.getItem("accessToken");
+        if (accessToken) {
+            api.users.me()
+                .then((fresh) => {
+                    localStorage.setItem("user", JSON.stringify(fresh));
+                    setUser(fresh);
+                })
+                .catch(() => { /* token may be expired, leave current user */ })
+                .finally(() => setIsLoading(false));
+        } else {
+            setIsLoading(false);
+        }
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -46,8 +59,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
+    const isAdmin = user?.role === "admin";
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isAdmin, isLoading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

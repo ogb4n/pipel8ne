@@ -36,7 +36,32 @@ export class UserService implements IUserReader {
    * Creates a new user. Single point of user creation across the system.
    * Returns full User (with passwordHash) for the auth flow.
    */
-  createUser(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
+  createUser(data: {
+    email: string;
+    name?: string;
+    passwordHash: string;
+    role?: "admin" | "user";
+  }): Promise<User> {
     return this.userRepository.create(data);
+  }
+
+  /**
+   * Returns the total number of users in the system.
+   * Used by AuthService to determine if the first user should be admin.
+   */
+  count(): Promise<number> {
+    return this.userRepository.count();
+  }
+
+  /**
+   * Updates a user by ID. Used by admin routes to change role (or other fields).
+   * Returns PublicUser or null if not found.
+   */
+  async updateById(
+    id: string,
+    data: Partial<Pick<User, "name" | "passwordHash" | "role">>,
+  ): Promise<PublicUser | null> {
+    const user = await this.userRepository.updateById(id, data);
+    return user ? toPublicUser(user) : null;
   }
 }

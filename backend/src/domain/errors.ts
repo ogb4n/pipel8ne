@@ -26,3 +26,11 @@ export class ValidationError extends Error {
     this.name = "ValidationError";
   }
 }
+
+export class RegistrationDisabledError extends Error {
+  readonly type = "RegistrationDisabledError" as const;
+  constructor(message = "Registration is currently disabled") {
+    super(message);
+    this.name = "RegistrationDisabledError";
+  }
+}
