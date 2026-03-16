@@ -1,7 +1,7 @@
 import { IGraphRepository } from "./IGraphRepository.js";
 import { IProjectRepository } from "../project/IProjectRepository.js";
 import { Graph, Viewport } from "./Graph.js";
-import { Job } from "./Job.js";
+import { Stage } from "./Stage.js";
 import { Edge } from "./Edge.js";
 import { NotFoundError, ForbiddenError, ValidationError } from "../errors.js";
 import { NodeFactory } from "./nodes/NodeFactory.js";
@@ -40,7 +40,7 @@ export class GraphService {
   async create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
     requesterId: string,
   ): Promise<Graph> {
     const project = await this.projectRepository.findById(projectId);
@@ -53,7 +53,7 @@ export class GraphService {
   async update(
     pipelineId: string,
     projectId: string,
-    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
     requesterId: string,
   ): Promise<Graph> {
     const project = await this.projectRepository.findById(projectId);
@@ -62,7 +62,7 @@ export class GraphService {
     const pipeline = await this.graphRepository.findById(pipelineId);
     if (!pipeline || pipeline.projectId !== projectId)
       throw new NotFoundError("Pipeline not found");
-    this.validateJobs(data.jobs);
+    this.validateStages(data.stages);
     return this.graphRepository.update(pipelineId, data);
   }
 
@@ -77,11 +77,13 @@ export class GraphService {
   ): Promise<readonly JobExecutionPlan[]> {
     const pipeline = await this.getById(pipelineId, projectId, requesterId);
     const plans: JobExecutionPlan[] = [];
-    for (const job of pipeline.jobs) {
-      const domainNodes = NodeFactory.fromDTOs(job.steps);
-      const planner = new ExecutionPlanVisitor(job.id, job.name, job.runsOn);
-      for (const node of domainNodes) node.accept(planner);
-      plans.push(planner.getJobPlan());
+    for (const stage of pipeline.stages) {
+      for (const job of stage.jobs) {
+        const domainNodes = NodeFactory.fromDTOs(job.steps);
+        const planner = new ExecutionPlanVisitor(job.id, job.name, job.runsOn);
+        for (const node of domainNodes) node.accept(planner);
+        plans.push(planner.getJobPlan());
+      }
     }
     return plans;
   }
@@ -89,11 +91,11 @@ export class GraphService {
   // ── private helpers ────────────────────────────────────────────────────────
 
   /**
-   * Validate all jobs' steps using the Visitor pattern.
+   * Validate all stages' jobs' steps using the Visitor pattern.
    * @throws {ValidationError} when any node has invalid configuration.
    */
-  private validateJobs(jobs: Job[]): void {
-    const allNodes = jobs.flatMap((j) => j.steps);
+  private validateStages(stages: Stage[]): void {
+    const allNodes = stages.flatMap((s) => s.jobs.flatMap((j) => j.steps));
     const domainNodes = NodeFactory.fromDTOs(allNodes);
     const validator = new ValidationVisitor();
     for (const node of domainNodes) node.accept(validator);

@@ -1,4 +1,4 @@
-import { Job } from "./Job.js";
+import { Stage } from "./Stage.js";
 import { Edge } from "./Edge.js";
 
 export interface Viewport {
@@ -12,8 +12,8 @@ export interface Graph {
   projectId: string; // references Project.id
   name: string;
   viewport: Viewport;
-  /** Jobs composing the pipeline. Each job groups a set of steps. */
-  jobs: Job[];
-  /** Edges between jobs — source/target are job IDs, define execution order. */
-  jobEdges: Edge[];
+  /** Stages composing the pipeline. Each stage groups parallel jobs. */
+  stages: Stage[];
+  /** Edges between stages — source/target are stage IDs, define execution order. */
+  stageEdges: Edge[];
 }

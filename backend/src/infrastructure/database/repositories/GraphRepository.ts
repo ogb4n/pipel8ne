@@ -1,5 +1,6 @@
 import { GraphModel } from "../models/GraphModel.js";
 import { Graph, Viewport } from "../../../Domain/graph/Graph.js";
+import { Stage } from "../../../Domain/graph/Stage.js";
 import { Job } from "../../../Domain/graph/Job.js";
 import { Node } from "../../../Domain/graph/Node.js";
 import { Edge } from "../../../Domain/graph/Edge.js";
@@ -81,15 +82,19 @@ export class GraphRepository implements IGraphRepository {
         y: doc.viewport.y,
         zoom: doc.viewport.zoom,
       },
-      jobs: doc.jobs.map((j) => ({
-        id: j.id,
-        name: j.name,
-        runsOn: j.runsOn,
-        position: { x: j.position.x, y: j.position.y },
-        steps: j.steps.map((n) => this.decryptNode(n)),
-        stepEdges: j.stepEdges.map((e) => this.mapEdge(e)),
+      stages: (doc.stages ?? []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        position: { x: s.position.x, y: s.position.y },
+        jobs: s.jobs.map((j) => ({
+          id: j.id,
+          name: j.name,
+          runsOn: j.runsOn ?? "ubuntu-latest",
+          steps: j.steps.map((n) => this.decryptNode(n)),
+          stepEdges: j.stepEdges.map((e) => this.mapEdge(e)),
+        })),
       })),
-      jobEdges: doc.jobEdges.map((e) => this.mapEdge(e)),
+      stageEdges: (doc.stageEdges ?? []).map((e) => this.mapEdge(e)),
     };
   }
 
@@ -97,6 +102,13 @@ export class GraphRepository implements IGraphRepository {
     return {
       ...job,
       steps: job.steps.map((n) => this.encryptNode(n)),
+    };
+  }
+
+  private encryptStage(stage: Stage): Stage {
+    return {
+      ...stage,
+      jobs: stage.jobs.map((j) => this.encryptJob(j)),
     };
   }
 
@@ -115,15 +127,15 @@ export class GraphRepository implements IGraphRepository {
   async create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph> {
-    const encryptedJobs = data.jobs.map((j) => this.encryptJob(j));
+    const encryptedStages = data.stages.map((s) => this.encryptStage(s));
     const doc = new GraphModel({
       projectId,
       name,
       viewport: data.viewport,
-      jobs: encryptedJobs,
-      jobEdges: data.jobEdges,
+      stages: encryptedStages,
+      stageEdges: data.stageEdges,
     });
     await doc.save();
     return this.toGraph(doc);
@@ -131,12 +143,12 @@ export class GraphRepository implements IGraphRepository {
 
   async update(
     id: string,
-    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph> {
-    const encryptedJobs = data.jobs.map((j) => this.encryptJob(j));
+    const encryptedStages = data.stages.map((s) => this.encryptStage(s));
     const doc = await GraphModel.findByIdAndUpdate(
       id,
-      { viewport: data.viewport, jobs: encryptedJobs, jobEdges: data.jobEdges },
+      { viewport: data.viewport, stages: encryptedStages, stageEdges: data.stageEdges },
       { new: true },
     );
     if (!doc) throw new Error(`Pipeline not found for id=${id}`);

@@ -27,33 +27,37 @@ interface CreatePipelineBody {
 
 interface UpdatePipelineBody {
   viewport: { x: number; y: number; zoom: number };
-  jobs: Array<{
+  stages: Array<{
     id: string;
     name: string;
     runsOn: string;
-    steps: Array<{
+    jobs: Array<{
       id: string;
-      type: string;
-      positionX: number;
-      positionY: number;
-      data: {
-        label: string;
-        description: string;
-        params: { baseParameters: Record<string, unknown> };
-        env: Record<string, unknown>;
-        secrets: Record<string, string>;
-      };
-    }>;
-    stepEdges: Array<{
-      id: string;
-      source: string;
-      target: string;
-      type: string;
-      waypoint?: { x: number; y: number };
+      name: string;
+      steps: Array<{
+        id: string;
+        type: string;
+        positionX: number;
+        positionY: number;
+        data: {
+          label: string;
+          description: string;
+          params: { baseParameters: Record<string, unknown> };
+          env: Record<string, unknown>;
+          secrets: Record<string, string>;
+        };
+      }>;
+      stepEdges: Array<{
+        id: string;
+        source: string;
+        target: string;
+        type: string;
+        waypoint?: { x: number; y: number };
+      }>;
     }>;
     position: { x: number; y: number };
   }>;
-  jobEdges: Array<{
+  stageEdges: Array<{
     id: string;
     source: string;
     target: string;
@@ -109,7 +113,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
         const pipeline = await app.graphService.create(
           request.params.projectId,
           request.body.name,
-          { viewport: { x: 0, y: 0, zoom: 1 }, jobs: [], jobEdges: [] },
+          { viewport: { x: 0, y: 0, zoom: 1 }, stages: [], stageEdges: [] },
           request.user.sub,
         );
         return reply.status(201).send(pipeline);
@@ -157,11 +161,11 @@ export default async function pipelineRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { viewport, jobs, jobEdges } = request.body;
+        const { viewport, stages, stageEdges } = request.body;
         return await app.graphService.update(
           request.params.pipelineId,
           request.params.projectId,
-          { viewport, jobs, jobEdges },
+          { viewport, stages, stageEdges },
           request.user.sub,
         );
       } catch (err) {

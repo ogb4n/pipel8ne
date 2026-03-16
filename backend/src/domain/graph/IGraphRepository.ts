@@ -1,5 +1,5 @@
 import { Graph, Viewport } from "./Graph.js";
-import { Job } from "./Job.js";
+import { Stage } from "./Stage.js";
 import { Edge } from "./Edge.js";
 
 export interface IGraphRepository {
@@ -8,8 +8,11 @@ export interface IGraphRepository {
   create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph>;
-  update(id: string, data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] }): Promise<Graph>;
+  update(
+    id: string,
+    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+  ): Promise<Graph>;
   delete(id: string): Promise<void>;
 }

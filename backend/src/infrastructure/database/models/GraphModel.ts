@@ -61,8 +61,8 @@ const PositionSchema = new Schema(
 );
 
 /**
- * JobSchema — groups a set of steps (nodes) that run on the same runner.
- * stepEdges define execution order within the job.
+ * JobSchema — groups a set of steps (nodes) within a Stage.
+ * All jobs in a stage run in parallel; steps within a job run sequentially.
  */
 const JobSchema = new Schema(
   {
@@ -71,6 +71,19 @@ const JobSchema = new Schema(
     runsOn: { type: String, required: true, default: "ubuntu-latest" },
     steps: { type: [NodeSchema], default: [] },
     stepEdges: { type: [EdgeSchema], default: [] },
+  },
+  { _id: false },
+);
+
+/**
+ * StageSchema — groups a set of jobs that run in parallel on the same runner.
+ * stageEdges define execution order between stages.
+ */
+const StageSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true, default: "stage" },
+    jobs: { type: [JobSchema], default: [] },
     position: { type: PositionSchema, required: true, default: () => ({ x: 0, y: 0 }) },
   },
   { _id: false },
@@ -115,6 +128,12 @@ type JobDoc = {
   runsOn: string;
   steps: NodeDoc[];
   stepEdges: EdgeDoc[];
+};
+
+type StageDoc = {
+  id: string;
+  name: string;
+  jobs: JobDoc[];
   position: { x: number; y: number };
 };
 
@@ -122,9 +141,9 @@ export interface IGraphDocument extends Document {
   projectId: string;
   name: string;
   viewport: { x: number; y: number; zoom: number };
-  jobs: JobDoc[];
-  /** Edges between jobs — source/target are job IDs, define execution order. */
-  jobEdges: EdgeDoc[];
+  stages: StageDoc[];
+  /** Edges between stages — source/target are stage IDs, define execution order. */
+  stageEdges: EdgeDoc[];
 }
 
 const GraphSchema = new Schema<IGraphDocument>(
@@ -132,8 +151,8 @@ const GraphSchema = new Schema<IGraphDocument>(
     projectId: { type: String, required: true, index: true },
     name: { type: String, required: true, default: "Pipeline" },
     viewport: { type: ViewportSchema, required: true, default: () => ({ x: 0, y: 0, zoom: 1 }) },
-    jobs: { type: [JobSchema], default: [] },
-    jobEdges: { type: [EdgeSchema], default: [] },
+    stages: { type: [StageSchema], default: [] },
+    stageEdges: { type: [EdgeSchema], default: [] },
   },
   { timestamps: true },
 );
