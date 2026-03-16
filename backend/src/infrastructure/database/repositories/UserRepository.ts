@@ -1,6 +1,6 @@
-import { UserModel } from "../models/UserModel";
-import { User } from "../../../domain/user/User";
-import { IUserRepository } from "../../../domain/user/IUserRepository";
+import { UserModel } from "../models/UserModel.js";
+import { User } from "../../../Domain/user/User.js";
+import { IUserRepository } from "../../../Domain/user/IUserRepository.js";
 
 /**
  * Implémentation Mongoose du port IUserRepository.
@@ -14,13 +14,14 @@ export class UserRepository implements IUserRepository {
       email: doc.email,
       name: doc.name ?? null,
       passwordHash: doc.passwordHash,
+      role: doc.role ?? "user",
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };
   }
 
   async findAll(): Promise<User[]> {
-    const docs = await UserModel.find().lean(false);
+    const docs = await UserModel.find();
     return docs.map((doc) => this.toUser(doc));
   }
 
@@ -34,14 +35,23 @@ export class UserRepository implements IUserRepository {
     return doc ? this.toUser(doc) : null;
   }
 
-  async create(data: { email: string; name?: string; passwordHash: string }): Promise<User> {
+  async create(data: {
+    email: string;
+    name?: string;
+    passwordHash: string;
+    role?: "admin" | "user";
+  }): Promise<User> {
     const doc = await UserModel.create(data);
     return this.toUser(doc);
   }
 
+  async count(): Promise<number> {
+    return UserModel.countDocuments();
+  }
+
   async updateById(
     id: string,
-    data: Partial<Pick<User, "name" | "passwordHash">>,
+    data: Partial<Pick<User, "name" | "passwordHash" | "role">>,
   ): Promise<User | null> {
     const doc = await UserModel.findByIdAndUpdate(id, data, { new: true });
     return doc ? this.toUser(doc) : null;

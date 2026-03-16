@@ -1,6 +1,6 @@
-import { RefreshTokenModel } from "../models/RefreshTokenModel";
-import { RefreshToken } from "../../../domain/auth/RefreshToken";
-import { IRefreshTokenRepository } from "../../../domain/auth/IRefreshTokenRepository";
+import { RefreshTokenModel } from "../models/RefreshTokenModel.js";
+import { RefreshToken } from "../../../Domain/auth/RefreshToken.js";
+import { IRefreshTokenRepository } from "../../../Domain/auth/IRefreshTokenRepository.js";
 
 export class RefreshTokenRepository implements IRefreshTokenRepository {
   private toRefreshToken(doc: InstanceType<typeof RefreshTokenModel>): RefreshToken {

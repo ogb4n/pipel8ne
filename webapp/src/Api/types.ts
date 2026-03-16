@@ -2,7 +2,18 @@ export interface User {
   id: string;
   email: string;
   name: string | null;
+  role: "admin" | "user";
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface Credential {
+  id: string;
+  userId: string;
+  provider: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
 }
 export interface AuthTokens {
   accessToken: string;
@@ -19,6 +30,174 @@ export interface Project {
   ownerId: string;
   lastModified: string;
 }
+// ── Node type discriminator ─────────────────────────────────────────────────
+export type NodeType =
+  | "trigger"
+  | "shell_command"
+  | "docker"
+  | "git"
+  | "test"
+  | "build"
+  | "deploy"
+  | "notification"
+  | "condition";
+
+// ── Typed params — mirror of backend Domain node params ─────────────────────
+export type TriggerType = "push" | "pull_request" | "schedule" | "manual" | "tag";
+export interface TriggerNodeParams {
+  triggerType: TriggerType;
+  branches?: string[];
+  schedule?: string;
+  tags?: string[];
+}
+
+export type Shell = "sh" | "bash" | "zsh" | "powershell" | "cmd";
+export interface ShellCommandNodeParams {
+  shell: Shell;
+  script: string;
+  workingDirectory?: string;
+  continueOnError?: boolean;
+  timeoutSeconds?: number;
+}
+
+export type DockerAction = "build" | "run" | "push" | "pull" | "compose_up" | "compose_down";
+export interface DockerNodeParams {
+  action: DockerAction;
+  image?: string;
+  dockerfile?: string;
+  buildContext?: string;
+  tags?: string[];
+  registry?: string;
+  command?: string;
+  composeFile?: string;
+}
+
+export type GitAction = "clone" | "checkout" | "pull" | "fetch" | "tag" | "push";
+export interface GitNodeParams {
+  action: GitAction;
+  repositoryUrl?: string;
+  ref?: string;
+  directory?: string;
+  depth?: number;
+  tagName?: string;
+  remote?: string;
+}
+
+export type TestRunner =
+  | "jest"
+  | "vitest"
+  | "pytest"
+  | "go_test"
+  | "cargo_test"
+  | "dotnet_test"
+  | "custom";
+export interface TestNodeParams {
+  runner: TestRunner;
+  command?: string;
+  testPattern?: string;
+  coverageThreshold?: number;
+  continueOnError?: boolean;
+}
+
+export type BuildTool =
+  | "npm"
+  | "yarn"
+  | "pnpm"
+  | "maven"
+  | "gradle"
+  | "cargo"
+  | "go"
+  | "dotnet"
+  | "make"
+  | "custom";
+export interface BuildNodeParams {
+  tool: BuildTool;
+  target?: string;
+  command?: string;
+  workingDirectory?: string;
+  outputPath?: string;
+  runtimeVersion?: string;
+}
+
+export type DeployTarget =
+  | "kubernetes"
+  | "aws_ecs"
+  | "aws_lambda"
+  | "gcp_run"
+  | "azure_app"
+  | "ssh"
+  | "custom";
+export type RolloutStrategy = "rolling" | "blue_green" | "canary" | "recreate";
+export interface DeployNodeParams {
+  target: DeployTarget;
+  environment: string;
+  namespace?: string;
+  manifestPath?: string;
+  rolloutStrategy?: RolloutStrategy;
+  sshHost?: string;
+  sshUser?: string;
+  remotePath?: string;
+  serviceName?: string;
+}
+
+export type NotificationChannel = "slack" | "teams" | "email" | "discord" | "webhook" | "pagerduty";
+export type NotificationTrigger = "always" | "on_success" | "on_failure" | "on_change";
+export interface NotificationNodeParams {
+  channel: NotificationChannel;
+  notifyOn: NotificationTrigger;
+  message: string;
+  recipient?: string;
+}
+
+export type ConditionOperator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "greater_than"
+  | "less_than"
+  | "matches_regex"
+  | "is_empty"
+  | "is_not_empty";
+export interface Condition {
+  leftOperand: string;
+  operator: ConditionOperator;
+  rightOperand?: string;
+}
+export interface ConditionNodeParams {
+  conditions: Condition[];
+  logicalOperator: "AND" | "OR";
+  trueBranchNodeIds: string[];
+  falseBranchNodeIds: string[];
+}
+
+/** Union of all typed params, keyed by node type */
+export type NodeParamsByType = {
+  trigger: TriggerNodeParams;
+  shell_command: ShellCommandNodeParams;
+  docker: DockerNodeParams;
+  git: GitNodeParams;
+  test: TestNodeParams;
+  build: BuildNodeParams;
+  deploy: DeployNodeParams;
+  notification: NotificationNodeParams;
+  condition: ConditionNodeParams;
+};
+
+export interface ApiKey {
+  id: string;
+  userId: string;
+  name: string;
+  prefix: string;
+  isRevoked: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateApiKeyResponse extends ApiKey {
+  rawKey: string; // returned once only
+}
+
 export interface NodeParams {
   baseParameters: Record<string, unknown>;
 }
@@ -31,7 +210,7 @@ export interface NodeData {
 }
 export interface GraphNode {
   id: string;
-  type: string;
+  type: NodeType;
   positionX: number;
   positionY: number;
   data: NodeData;
@@ -41,17 +220,40 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: string;
+  /** Optional reroute waypoint stored as flow coordinates */
+  waypoint?: { x: number; y: number };
+  /** Execution condition for stage→stage edges */
+  condition?: "on_success" | "always" | "on_failure";
 }
 export interface Viewport {
   x: number;
   y: number;
   zoom: number;
 }
+export interface Job {
+  id: string;
+  name: string;
+  runsOn: string;
+  steps: GraphNode[];
+  stepEdges: GraphEdge[];
+}
+export interface Stage {
+  id: string;
+  name: string;
+  /** Jobs belonging to this stage — always run in parallel */
+  jobs: Job[];
+  /** Canvas position of the stage group node */
+  position: { x: number; y: number };
+  /** Dependencies between jobs within this stage */
+  jobEdges?: GraphEdge[];
+}
 export interface Graph {
   id: string;
   projectId: string;
   name: string;
   viewport: Viewport;
-  nodes: GraphNode[];
-  edges: GraphEdge[];
+  /** Stages composing the pipeline. */
+  stages: Stage[];
+  /** Edges between stages — source/target are stage IDs, define execution order. */
+  stageEdges: GraphEdge[];
 }

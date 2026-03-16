@@ -1,15 +1,76 @@
-import { GraphModel } from "../models/GraphModel";
-import { Graph, Viewport } from "../../../domain/graph/Graph";
-import { Node } from "../../../domain/graph/Node";
-import { Edge } from "../../../domain/graph/Edge";
-import { IGraphRepository } from "../../../domain/graph/IGraphRepository";
-import { encrypt, decrypt } from "../../SecretsService";
+import { GraphModel } from "../models/GraphModel.js";
+import { Graph, Viewport } from "../../../Domain/graph/Graph.js";
+import { Job } from "../../../Domain/graph/Job.js";
+import { Node } from "../../../Domain/graph/Node.js";
+import { Edge } from "../../../Domain/graph/Edge.js";
+import { IGraphRepository } from "../../../Domain/graph/IGraphRepository.js";
+import { ISecretsService } from "../../../Domain/graph/ISecretsService.js";
 
-/**
- * Implémentation Mongoose du port IGraphRepository.
- * Chiffrement/déchiffrement des secrets confiné ici via SecretsService.
- */
 export class GraphRepository implements IGraphRepository {
+  constructor(private readonly secretsService: ISecretsService) {}
+
+  // ── Mapping helpers ────────────────────────────────────────────────────────
+
+  private mapEdge(e: {
+    id: string;
+    source: string;
+    target: string;
+    type: string;
+    waypoint?: { x: number; y: number };
+  }): Edge {
+    return {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      type: e.type,
+      ...(e.waypoint ? { waypoint: { x: e.waypoint.x, y: e.waypoint.y } } : {}),
+    };
+  }
+
+  private decryptNode(n: {
+    id: string;
+    type: string;
+    positionX: number;
+    positionY: number;
+    data: {
+      label: string;
+      description: string;
+      params: { baseParameters: Record<string, unknown> };
+      env: Record<string, unknown>;
+      secrets: Map<string, string>;
+    };
+  }): Node {
+    return {
+      id: n.id,
+      type: n.type,
+      positionX: n.positionX,
+      positionY: n.positionY,
+      data: {
+        label: n.data.label,
+        description: n.data.description,
+        params: {
+          baseParameters: (n.data.params?.baseParameters as Record<string, unknown>) ?? {},
+        },
+        env: (n.data.env as Record<string, unknown>) ?? {},
+        secrets: Object.fromEntries(
+          Array.from(n.data.secrets.entries()).map(([k, v]) => [k, this.secretsService.decrypt(v)]),
+        ),
+      },
+    };
+  }
+
+  private encryptNode(node: Node): Node {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        secrets: Object.fromEntries(
+          Object.entries(node.data.secrets).map(([k, v]) => [k, this.secretsService.encrypt(v)]),
+        ),
+      },
+    };
+  }
+
   private toGraph(doc: InstanceType<typeof GraphModel>): Graph {
     return {
       id: doc._id.toString(),
@@ -20,43 +81,26 @@ export class GraphRepository implements IGraphRepository {
         y: doc.viewport.y,
         zoom: doc.viewport.zoom,
       },
-      nodes: doc.nodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        positionX: n.positionX,
-        positionY: n.positionY,
-        data: {
-          label: n.data.label,
-          description: n.data.description,
-          params: {
-            baseParameters: (n.data.params?.baseParameters as Record<string, unknown>) ?? {},
-          },
-          env: (n.data.env as Record<string, unknown>) ?? {},
-          secrets: Object.fromEntries(
-            Array.from(n.data.secrets.entries()).map(([k, v]) => [k, decrypt(v)]),
-          ),
-        },
+      jobs: doc.jobs.map((j) => ({
+        id: j.id,
+        name: j.name,
+        runsOn: j.runsOn,
+        position: { x: j.position.x, y: j.position.y },
+        steps: j.steps.map((n) => this.decryptNode(n)),
+        stepEdges: j.stepEdges.map((e) => this.mapEdge(e)),
       })),
-      edges: doc.edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        type: e.type,
-      })),
+      jobEdges: doc.jobEdges.map((e) => this.mapEdge(e)),
     };
   }
 
-  private encryptNode(node: Node): Node {
+  private encryptJob(job: Job): Job {
     return {
-      ...node,
-      data: {
-        ...node.data,
-        secrets: Object.fromEntries(
-          Object.entries(node.data.secrets).map(([k, v]) => [k, encrypt(v)]),
-        ),
-      },
+      ...job,
+      steps: job.steps.map((n) => this.encryptNode(n)),
     };
   }
+
+  // ── Repository methods ─────────────────────────────────────────────────────
 
   async findAllByProjectId(projectId: string): Promise<Graph[]> {
     const docs = await GraphModel.find({ projectId });
@@ -71,15 +115,15 @@ export class GraphRepository implements IGraphRepository {
   async create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; nodes: Node[]; edges: Edge[] },
+    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
   ): Promise<Graph> {
-    const encryptedNodes = data.nodes.map((n) => this.encryptNode(n));
+    const encryptedJobs = data.jobs.map((j) => this.encryptJob(j));
     const doc = new GraphModel({
       projectId,
       name,
       viewport: data.viewport,
-      nodes: encryptedNodes,
-      edges: data.edges,
+      jobs: encryptedJobs,
+      jobEdges: data.jobEdges,
     });
     await doc.save();
     return this.toGraph(doc);
@@ -87,12 +131,12 @@ export class GraphRepository implements IGraphRepository {
 
   async update(
     id: string,
-    data: { viewport: Viewport; nodes: Node[]; edges: Edge[] },
+    data: { viewport: Viewport; jobs: Job[]; jobEdges: Edge[] },
   ): Promise<Graph> {
-    const encryptedNodes = data.nodes.map((n) => this.encryptNode(n));
+    const encryptedJobs = data.jobs.map((j) => this.encryptJob(j));
     const doc = await GraphModel.findByIdAndUpdate(
       id,
-      { viewport: data.viewport, nodes: encryptedNodes, edges: data.edges },
+      { viewport: data.viewport, jobs: encryptedJobs, jobEdges: data.jobEdges },
       { new: true },
     );
     if (!doc) throw new Error(`Pipeline not found for id=${id}`);

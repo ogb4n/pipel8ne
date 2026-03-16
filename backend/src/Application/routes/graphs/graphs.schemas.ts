@@ -32,6 +32,14 @@ const nodeSchema = {
   },
 } as const;
 
+const waypointSchema = {
+  type: "object",
+  properties: {
+    x: { type: "number" },
+    y: { type: "number" },
+  },
+} as const;
+
 const edgeSchema = {
   type: "object",
   required: ["id", "source", "target", "type"],
@@ -40,6 +48,33 @@ const edgeSchema = {
     source: { type: "string" },
     target: { type: "string" },
     type: { type: "string" },
+    waypoint: waypointSchema,
+  },
+} as const;
+
+const positionSchema = {
+  type: "object",
+  required: ["x", "y"],
+  properties: {
+    x: { type: "number" },
+    y: { type: "number" },
+  },
+} as const;
+
+/**
+ * A job groups a set of steps that run on the same runner.
+ * stepEdges define execution order within the job.
+ */
+const jobSchema = {
+  type: "object",
+  required: ["id", "name", "runsOn", "steps", "stepEdges", "position"],
+  properties: {
+    id: { type: "string" },
+    name: { type: "string" },
+    runsOn: { type: "string" },
+    steps: { type: "array", items: nodeSchema },
+    stepEdges: { type: "array", items: edgeSchema },
+    position: positionSchema,
   },
 } as const;
 
@@ -60,8 +95,8 @@ export const pipelineSchema = {
     projectId: { type: "string" },
     name: { type: "string" },
     viewport: viewportSchema,
-    nodes: { type: "array", items: nodeSchema },
-    edges: { type: "array", items: edgeSchema },
+    jobs: { type: "array", items: jobSchema },
+    jobEdges: { type: "array", items: edgeSchema },
   },
 } as const;
 
@@ -76,11 +111,11 @@ export const createPipelineBodySchema = {
 
 export const updatePipelineBodySchema = {
   type: "object",
-  required: ["viewport", "nodes", "edges"],
+  required: ["viewport", "jobs", "jobEdges"],
   properties: {
     viewport: viewportSchema,
-    nodes: { type: "array", items: nodeSchema },
-    edges: { type: "array", items: edgeSchema },
+    jobs: { type: "array", items: jobSchema },
+    jobEdges: { type: "array", items: edgeSchema },
   },
   additionalProperties: false,
 } as const;
@@ -89,8 +124,3 @@ export const notFoundSchema = {
   type: "object",
   properties: { message: { type: "string" } },
 } as const;
-
-/** @deprecated kept for backward compat — use pipelineSchema */
-export const graphSchema = pipelineSchema;
-/** @deprecated kept for backward compat — use updatePipelineBodySchema */
-export const upsertGraphBodySchema = updatePipelineBodySchema;

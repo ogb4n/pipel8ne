@@ -1,219 +1,273 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
     ReactFlow,
+    ReactFlowProvider,
     Background,
+    BackgroundVariant,
     Controls,
     MiniMap,
-    addEdge,
-    useNodesState,
-    useEdgesState,
-    type OnConnect,
-    type Node as RFNode,
-    type Edge as RFEdge,
     type Viewport as RFViewport,
+    type Node as RFNode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { api } from "../Api/client";
-import { GraphNode, GraphEdge, Graph, Viewport } from "../Api/types";
+import { usePipeline } from "../hooks/usePipeline";
+import { nodeTypes } from "../Components/Graph/nodeTypes";
+import { NodeConfigPanel } from "../Components/Graph/NodeConfigPanel";
+import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
+import StageEdge from "../Components/Graph/edges/StageEdge";
+import JobEdge from "../Components/Graph/edges/JobEdge";
+import StepDrawer from "../Components/Graph/StepDrawer";
+import type { GraphNode, GraphEdge } from "../Api/types";
 
-/** Convert backend GraphNode → React Flow Node */
-function toRFNode(n: GraphNode): RFNode {
-    return {
-        id: n.id,
-        type: n.type,
-        position: { x: n.positionX, y: n.positionY },
-        data: { label: n.data.label },
-    };
+const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
+const defaultEdgeOptions = { type: "stageEdge" } as const;
+
+interface PageGraphCanvasProps {
+    projectId?: string;
+    pipelineId?: string;
 }
 
-/** Convert backend GraphEdge → React Flow Edge */
-function toRFEdge(e: GraphEdge): RFEdge {
-    return { id: e.id, source: e.source, target: e.target, type: e.type };
-}
-
-/** Convert React Flow Node → backend GraphNode (preserve existing data) */
-function toBackendNode(rfNode: RFNode, existing: GraphNode | undefined): GraphNode {
-    return {
-        id: rfNode.id,
-        type: rfNode.type ?? "default",
-        positionX: rfNode.position.x,
-        positionY: rfNode.position.y,
-        data: existing?.data ?? {
-            label: String(rfNode.data?.label ?? rfNode.id),
-            description: "",
-            params: { baseParameters: {} },
-            env: {},
-            secrets: {},
-        },
-    };
-}
-
-const PageGraph: React.FC = () => {
-    const { projectId, pipelineId } = useParams<{ projectId: string; pipelineId: string }>();
+const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId }) => {
     const navigate = useNavigate();
 
-    const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
-    const [pipeline, setPipeline] = useState<Graph | null>(null);
-    const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [savedOk, setSavedOk] = useState(false);
+    const {
+        pipeline, nodes, edges, status, error, savedOk,
+        selectedNodeId, openDrawerJobId, onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
+        addJob, addStage, save, exportToYaml, deletePipeline, selectNode, updateNodeData, setViewport,
+        openJobDrawer, closeJobDrawer, updateJob,
+    } = usePipeline(projectId, pipelineId);
 
-    useEffect(() => {
-        if (!projectId || !pipelineId) return;
-        api.pipelines.getById(projectId, pipelineId)
-            .then((p) => {
-                setPipeline(p);
-                setNodes(p.nodes.map(toRFNode));
-                setEdges(p.edges.map(toRFEdge));
-            })
-            .catch((err: unknown) => {
-                setError(err instanceof Error ? err.message : "Erreur de chargement");
-            })
-            .finally(() => setLoading(false));
-    }, [projectId, pipelineId]);
+    const [exportFormat, setExportFormat] = useState<"github" | "gitlab" | "azure">("github");
+    const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
-    const onConnect: OnConnect = useCallback(
-        (connection) => setEdges((eds) => addEdge(connection, eds)),
-        [setEdges],
-    );
-
-    const handleSave = async () => {
-        if (!projectId || !pipelineId) return;
-        setSaving(true);
-        setError(null);
-        try {
-            const backendNodes = nodes.map((rfNode) => {
-                const existing = pipeline?.nodes.find((n) => n.id === rfNode.id);
-                return toBackendNode(rfNode, existing);
-            });
-            const backendEdges: GraphEdge[] = edges.map((e) => ({
-                id: e.id,
-                source: e.source,
-                target: e.target,
-                type: e.type ?? "default",
-            }));
-            const result = await api.pipelines.update(projectId, pipelineId, {
-                viewport,
-                nodes: backendNodes,
-                edges: backendEdges,
-            });
-            setPipeline(result);
-            setSavedOk(true);
-            setTimeout(() => setSavedOk(false), 2000);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
-        } finally {
-            setSaving(false);
-        }
+    const formatLabels: Record<"github" | "gitlab" | "azure", string> = {
+        github: "GitHub Actions",
+        gitlab: "GitLab CI",
+        azure: "Azure DevOps",
     };
+
+    const selectedNode = nodes.find((n) => n.id === selectedNodeId && n.type !== "jobGroup" && n.type !== "stageGroup") ?? null;
+    const drawerJobNode = openDrawerJobId ? nodes.find((n) => n.id === openDrawerJobId) ?? null : null;
 
     const handleDelete = async () => {
-        if (!projectId || !pipelineId) return;
         if (!window.confirm("Supprimer cette pipeline ? Cette action est irréversible.")) return;
-        setDeleting(true);
-        setError(null);
-        try {
-            await api.pipelines.delete(projectId, pipelineId);
-            void navigate(`/projects/${projectId}/pipelines`);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Erreur de suppression");
-            setDeleting(false);
-        }
+        await deletePipeline();
+        void navigate(`/projects/${projectId}/pipelines`);
     };
 
-    const handleAddNode = () => {
-        const id = `node-${Date.now()}`;
-        setNodes((nds) => [
-            ...nds,
-            {
-                id,
-                type: "default",
-                position: { x: Math.random() * 300 + 50, y: Math.random() * 200 + 50 },
-                data: { label: "Nouveau nœud" },
-            },
-        ]);
-    };
-
-    if (loading) return (
-        <div className="flex items-center justify-center h-[calc(100vh-8rem)] text-gray-500">
+    if (status === "loading") return (
+        <div className="flex items-center gap-2 justify-center h-[calc(100vh-3rem)] text-zinc-400 dark:text-zinc-500 text-sm">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
             Chargement...
         </div>
     );
 
     if (error && !pipeline) return (
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] gap-4">
-            <p className="text-red-500">{error}</p>
-            <Link to={`/projects/${projectId}/pipelines`} className="text-indigo-600 hover:underline text-sm">
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-3rem)] gap-3">
+            <p className="text-sm text-red-500">{error}</p>
+            <Link to={`/projects/${projectId}/pipelines`} className="text-xs text-accent-500 hover:text-accent-400 transition-colors">
                 ← Retour aux pipelines
             </Link>
         </div>
     );
 
     return (
-        <div className="flex flex-col" style={{ height: "calc(100vh - 4rem)" }}>
+        <div className="flex flex-col" style={{ height: "calc(100vh - 3rem)" }}>
             {/* Toolbar */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <div className="flex items-center gap-2 px-4 py-0 h-11 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
                 <Link
                     to={`/projects/${projectId}/pipelines`}
-                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition"
+                    className="text-xs text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                 >
-                    ← Pipelines
+                    Pipelines
                 </Link>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300 dark:text-zinc-700">
+                    <path d="m9 18 6-6-6-6" />
+                </svg>
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
                     {pipeline?.name ?? "Pipeline"}
                 </span>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                    onClick={handleAddNode}
-                    className="text-sm px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                >
-                    + Nœud
-                </button>
-                <div className="ml-auto flex items-center gap-3">
-                    {error && <span className="text-sm text-red-500">{error}</span>}
-                    {savedOk && <span className="text-sm text-green-500">Sauvegardé ✓</span>}
+
+                <div className="ml-auto flex items-center gap-2">
+                    {error && <span className="text-xs text-red-500">{error}</span>}
+                    {savedOk && (
+                        <span className="text-xs text-emerald-500 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                            Sauvegardé
+                        </span>
+                    )}
                     <button
                         onClick={() => { void handleDelete(); }}
-                        disabled={deleting}
-                        className="px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 text-sm font-medium transition"
+                        disabled={status === "deleting"}
+                        className="px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-900/50 disabled:opacity-50 text-xs font-medium transition-colors"
                     >
-                        {deleting ? "..." : "Supprimer"}
+                        {status === "deleting" ? "Suppression..." : "Supprimer"}
                     </button>
+                    {/* Export YAML split button */}
+                    <div className="relative">
+                        {exportDropdownOpen && (
+                            <div className="fixed inset-0 z-10" onClick={() => setExportDropdownOpen(false)} />
+                        )}
+                        <div className="flex items-stretch">
+                            <button
+                                onClick={() => exportToYaml(exportFormat)}
+                                title="Exporter en YAML"
+                                className="px-3 py-1.5 rounded-l-md border border-r-0 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs font-medium transition-colors flex items-center gap-1.5"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                {formatLabels[exportFormat]}
+                            </button>
+                            <button
+                                onClick={() => setExportDropdownOpen((o) => !o)}
+                                className="px-1.5 py-1.5 rounded-r-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="m6 9 6 6 6-6" />
+                                </svg>
+                            </button>
+                        </div>
+                        {exportDropdownOpen && (
+                            <ul className="absolute right-0 z-20 mt-1 w-36 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg text-xs">
+                                {(["github", "gitlab", "azure"] as const).map((fmt) => (
+                                    <li key={fmt}>
+                                        <button
+                                            onClick={() => { setExportFormat(fmt); setExportDropdownOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${exportFormat === fmt ? "text-accent-500 font-medium" : "text-zinc-600 dark:text-zinc-300"
+                                                }`}
+                                        >
+                                            {formatLabels[fmt]}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                     <button
-                        onClick={() => { void handleSave(); }}
-                        disabled={saving}
-                        className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium transition"
+                        onClick={() => { void save(); }}
+                        disabled={status === "saving"}
+                        className="px-3 py-1.5 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-xs font-medium transition-colors"
                     >
-                        {saving ? "..." : "Sauvegarder"}
+                        {status === "saving" ? "Sauvegarde..." : "Sauvegarder"}
                     </button>
                 </div>
             </div>
 
-            {/* React Flow canvas */}
-            <div className="flex-1">
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    fitView
-                    colorMode="system"
-                    onMoveEnd={(_: unknown, vp: RFViewport) => setViewport(vp)}
-                >
-                    <Background />
-                    <Controls />
-                    <MiniMap />
-                </ReactFlow>
+            {/* Canvas */}
+            <div className="flex-1 relative">
+                {/* Floating toolbar */}
+                <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 10 }} className="flex flex-col gap-2">
+                    <button
+                        onClick={() => addStage()}
+                        title="Ajouter une nouvelle stage"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M12 8v8M8 12h8" />
+                        </svg>
+                        + Stage
+                    </button>
+                    <button
+                        onClick={() => addJob()}
+                        title="Ajouter un job dans la première stage"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M12 8v8M8 12h8" />
+                        </svg>
+                        + Job
+                    </button>
+                </div>
+
+                <GraphActionsContext.Provider value={{ selectNode }}>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
+                        defaultEdgeOptions={defaultEdgeOptions}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onNodeClick={(_: React.MouseEvent, node: RFNode) => {
+                            selectNode(node.id);
+                            if (node.type === 'jobGroup') openJobDrawer(node.id);
+                        }}
+                        onPaneClick={() => selectNode(null)}
+                        onMoveEnd={(_: unknown, vp: RFViewport) => setViewport(vp)}
+                        onNodeDragStart={onNodeDragStart}
+                        onNodeDrag={onNodeDrag}
+                        onNodeDragStop={onNodeDragStop}
+                        colorMode="dark"
+                        style={{ "--xy-background-color": "#171717" } as React.CSSProperties}
+                    >
+                        <Background
+                            variant={BackgroundVariant.Dots}
+                            bgColor="#171717"
+                            color="#494949"
+                            gap={18}
+                            size={1.2}
+                        />
+                        <Controls />
+                        <MiniMap
+                            nodeColor={(node) => {
+                                if (node.type === 'stageGroup') return 'rgba(139,92,246,0.6)';
+                                if (node.type === 'jobGroup') return 'rgba(99,102,241,0.6)';
+                                return '#52525b';
+                            }}
+                            maskColor="rgba(0,0,0,0.6)"
+                            style={{
+                                background: 'rgba(15,10,30,0.8)',
+                                border: '1px solid rgba(139,92,246,0.2)',
+                                borderRadius: 8,
+                            }}
+                        />
+                    </ReactFlow>
+
+                    {selectedNode && (
+                        <NodeConfigPanel
+                            node={selectedNode}
+                            onClose={() => selectNode(null)}
+                            onUpdate={(id, data) => updateNodeData(id, data)}
+                        />
+                    )}
+                </GraphActionsContext.Provider>
+
+                {drawerJobNode && (
+                    <StepDrawer
+                        jobId={drawerJobNode.id}
+                        jobName={(drawerJobNode.data as { name?: string }).name ?? ''}
+                        runsOn={(drawerJobNode.data as { runsOn?: string }).runsOn ?? 'ubuntu-latest'}
+                        steps={(drawerJobNode.data as { steps?: GraphNode[] }).steps ?? []}
+                        stepEdges={(drawerJobNode.data as { stepEdges?: GraphEdge[] }).stepEdges ?? []}
+                        onClose={closeJobDrawer}
+                        onUpdateJob={updateJob}
+                    />
+                )}
             </div>
         </div>
     );
 };
 
+const PageGraph: React.FC = () => {
+    const { projectId, pipelineId } = useParams<{ projectId: string; pipelineId: string }>();
+    return (
+        <ReactFlowProvider>
+            <PageGraphCanvas projectId={projectId} pipelineId={pipelineId} />
+        </ReactFlowProvider>
+    );
+};
+
 export default PageGraph;
+

@@ -3,6 +3,9 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../Api/client";
 import { Graph } from "../Api/types";
 
+const inputCls = "w-full px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition";
+const labelCls = "block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider";
+
 const PagePipelines: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
@@ -58,36 +61,55 @@ const PagePipelines: React.FC = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
-            <div className="flex items-center gap-3 mb-6">
-                <Link
-                    to="/projects"
-                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition"
-                >
-                    ← Projets
-                </Link>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">Pipelines</h1>
+        <div className="max-w-3xl mx-auto py-10 px-5">
+            {/* Breadcrumb + Header */}
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                    <Link
+                        to="/projects"
+                        className="text-xs text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                    >
+                        Projets
+                    </Link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300 dark:text-zinc-700">
+                        <path d="m9 18 6-6-6-6" />
+                    </svg>
+                    <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pipelines</h1>
+                </div>
                 <button
                     onClick={() => setShowForm(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    className="flex items-center gap-1.5 text-xs font-medium bg-accent-500 hover:bg-accent-600 text-white px-3.5 py-2 rounded-md transition-colors"
                 >
-                    + Nouvelle pipeline
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nouvelle pipeline
                 </button>
             </div>
 
-            {error && <p className="mb-4 text-red-500 text-sm">{error}</p>}
+            {error && (
+                <div className="mb-6 text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
+                    {error}
+                </div>
+            )}
 
-            {/* New pipeline form modal */}
+            {/* Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
                     <form
                         onSubmit={(e) => { void handleCreate(e); }}
-                        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-sm space-y-4"
+                        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 w-full max-w-sm space-y-4 shadow-xl"
                     >
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nouvelle pipeline</h2>
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Nouvelle pipeline</h2>
+                            <button type="button" onClick={() => { setShowForm(false); setNewName(""); }} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 6 6 18M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
+                            <label className={labelCls}>Nom</label>
                             <input
                                 type="text"
                                 required
@@ -95,23 +117,23 @@ const PagePipelines: React.FC = () => {
                                 value={newName}
                                 onChange={(e) => setNewName(e.target.value)}
                                 placeholder="Deploy to production"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className={inputCls}
                             />
                         </div>
-                        <div className="flex gap-3 pt-2">
+                        <div className="flex gap-2 pt-2">
                             <button
                                 type="button"
                                 onClick={() => { setShowForm(false); setNewName(""); }}
-                                className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                className="flex-1 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm transition-colors"
                             >
                                 Annuler
                             </button>
                             <button
                                 type="submit"
                                 disabled={creating}
-                                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold transition"
+                                className="flex-1 py-2 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                             >
-                                {creating ? "..." : "Créer"}
+                                {creating ? "Création..." : "Créer"}
                             </button>
                         </div>
                     </form>
@@ -119,35 +141,43 @@ const PagePipelines: React.FC = () => {
             )}
 
             {loading ? (
-                <div className="text-gray-500 dark:text-gray-400">Chargement...</div>
+                <div className="flex items-center gap-2 text-sm text-zinc-400 dark:text-zinc-500">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Chargement...
+                </div>
             ) : pipelines.length === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                    <p className="text-lg mb-2">Aucune pipeline pour ce projet.</p>
-                    <p className="text-sm">Créez votre première pipeline ci-dessus.</p>
+                <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl py-20 flex flex-col items-center gap-2">
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Aucune pipeline pour ce projet</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600">Créez votre première pipeline ci-dessus</p>
                 </div>
             ) : (
-                <div className="flex flex-col gap-3">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
                     {pipelines.map((p) => (
                         <div
                             key={p.id}
-                            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between hover:shadow-md transition"
+                            className="flex items-center justify-between px-4 py-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
                         >
-                            <div>
-                                <h3 className="font-semibold text-gray-900 dark:text-white">{p.name}</h3>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                                    {p.nodes.length} nœud{p.nodes.length !== 1 ? "s" : ""} · {p.edges.length} connexion{p.edges.length !== 1 ? "s" : ""}
+                            <div className="min-w-0">
+                                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{p.name}</h3>
+                                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                                    {p.jobs.length} job{p.jobs.length !== 1 ? "s" : ""}
+                                    <span className="mx-1 opacity-50">·</span>
+                                    {p.jobs.reduce((acc, j) => acc + j.steps.length, 0)} step{p.jobs.reduce((acc, j) => acc + j.steps.length, 0) !== 1 ? "s" : ""}
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 ml-4 shrink-0">
                                 <Link
                                     to={`/projects/${projectId}/pipelines/${p.id}`}
-                                    className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition"
+                                    className="px-3 py-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 hover:bg-accent-50 dark:hover:bg-accent-950/20 text-zinc-600 dark:text-zinc-300 hover:text-accent-500 dark:hover:text-accent-400 text-xs font-medium transition-colors"
                                 >
-                                    Ouvrir →
+                                    Ouvrir
                                 </Link>
                                 <button
                                     onClick={() => { void handleDelete(p.id); }}
-                                    className="px-3 py-1.5 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                    className="px-2.5 py-1.5 rounded-md text-xs text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
                                 >
                                     Supprimer
                                 </button>
