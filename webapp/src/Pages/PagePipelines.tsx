@@ -163,9 +163,9 @@ const PagePipelines: React.FC = () => {
                             <div className="min-w-0">
                                 <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{p.name}</h3>
                                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
-                                    {p.jobs.length} job{p.jobs.length !== 1 ? "s" : ""}
+                                    {p.stages.length} stage{p.stages.length !== 1 ? "s" : ""}
                                     <span className="mx-1 opacity-50">·</span>
-                                    {p.jobs.reduce((acc, j) => acc + j.steps.length, 0)} step{p.jobs.reduce((acc, j) => acc + j.steps.length, 0) !== 1 ? "s" : ""}
+                                    {p.stages.reduce((acc, s) => acc + s.jobs.length, 0)} job{p.stages.reduce((acc, s) => acc + s.jobs.length, 0) !== 1 ? "s" : ""}
                                 </p>
                             </div>
                             <div className="flex items-center gap-1 ml-4 shrink-0">
