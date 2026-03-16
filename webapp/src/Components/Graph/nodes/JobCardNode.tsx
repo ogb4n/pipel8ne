@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import type { GraphNode, GraphEdge } from "../../../Api/types";
+import { useGraphActions } from "../GraphActionsContext";
 
 interface JobCardData {
     name: string;
@@ -18,6 +19,7 @@ interface JobCardNodeProps {
 
 const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
     const { setNodes } = useReactFlow();
+    const { openJobDrawer } = useGraphActions();
     const [editingName, setEditingName] = useState(false);
     const [editingRunner, setEditingRunner] = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -201,7 +203,7 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                     )}
                 </div>
 
-                {/* Body */}
+                {/* Body — double-click to open step drawer */}
                 <div
                     style={{
                         flex: 1,
@@ -209,7 +211,10 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                         alignItems: "center",
                         justifyContent: "center",
                         padding: "0 12px",
+                        cursor: "pointer",
                     }}
+                    onDoubleClick={() => openJobDrawer(id)}
+                    title="Double-clic pour éditer les steps"
                 >
                     <span
                         style={{
@@ -219,8 +224,8 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                         }}
                     >
                         {stepCount === 0
-                            ? "Aucun step"
-                            : `${stepCount} step${stepCount > 1 ? "s" : ""}`}
+                            ? "Aucun step · double-clic"
+                            : `${stepCount} step${stepCount > 1 ? "s" : ""} · double-clic`}
                     </span>
                 </div>
             </div>

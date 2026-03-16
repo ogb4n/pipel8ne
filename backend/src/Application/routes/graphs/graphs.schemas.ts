@@ -62,18 +62,32 @@ const positionSchema = {
 } as const;
 
 /**
- * A job groups a set of steps that run on the same runner.
- * stepEdges define execution order within the job.
+ * A job groups a set of steps within a stage.
+ * All jobs in a stage run in parallel; steps within a job run sequentially.
  */
 const jobSchema = {
   type: "object",
-  required: ["id", "name", "runsOn", "steps", "stepEdges", "position"],
+  required: ["id", "name", "runsOn", "steps", "stepEdges"],
   properties: {
     id: { type: "string" },
     name: { type: "string" },
     runsOn: { type: "string" },
     steps: { type: "array", items: nodeSchema },
     stepEdges: { type: "array", items: edgeSchema },
+  },
+} as const;
+
+/**
+ * A stage groups a set of jobs that run in parallel on the same runner.
+ * stageEdges define execution order between stages.
+ */
+const stageSchema = {
+  type: "object",
+  required: ["id", "name", "jobs", "position"],
+  properties: {
+    id: { type: "string" },
+    name: { type: "string" },
+    jobs: { type: "array", items: jobSchema },
     position: positionSchema,
   },
 } as const;
@@ -95,8 +109,8 @@ export const pipelineSchema = {
     projectId: { type: "string" },
     name: { type: "string" },
     viewport: viewportSchema,
-    jobs: { type: "array", items: jobSchema },
-    jobEdges: { type: "array", items: edgeSchema },
+    stages: { type: "array", items: stageSchema },
+    stageEdges: { type: "array", items: edgeSchema },
   },
 } as const;
 
@@ -111,11 +125,11 @@ export const createPipelineBodySchema = {
 
 export const updatePipelineBodySchema = {
   type: "object",
-  required: ["viewport", "jobs", "jobEdges"],
+  required: ["viewport", "stages", "stageEdges"],
   properties: {
     viewport: viewportSchema,
-    jobs: { type: "array", items: jobSchema },
-    jobEdges: { type: "array", items: edgeSchema },
+    stages: { type: "array", items: stageSchema },
+    stageEdges: { type: "array", items: edgeSchema },
   },
   additionalProperties: false,
 } as const;

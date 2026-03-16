@@ -236,6 +236,8 @@ export interface Job {
   runsOn: string;
   steps: GraphNode[];
   stepEdges: GraphEdge[];
+  /** Canvas position in stage view */
+  position?: { x: number; y: number };
 }
 export interface Stage {
   id: string;

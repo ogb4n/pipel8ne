@@ -30,43 +30,22 @@ import type {
 
 const JOB_CARD_WIDTH = 280;
 const JOB_CARD_HEIGHT = 100;
-const JOB_HEADER_HEIGHT = 52; // stage header height before first job
-const JOB_GAP = 16;
-const STAGE_DEFAULT_WIDTH = 320;
-const STAGE_DEFAULT_HEIGHT = 200;
+const STAGE_CARD_WIDTH = 240;
+const JOB_H_GAP = 80; // horizontal gap between job cards in stage view
 
-// ── RF <-> Domain converters ─────────────────────────────────────────────────
+// ── Pipeline view converters (stageCard nodes) ───────────────────────────────
 
-/** Convert a single Stage → RF stage lane node + RF job card nodes (steps stored in job data, not on canvas) */
-function stageToRFNodes(stage: Stage): RFNode[] {
-  const neededStageHeight =
-    stage.jobs.length > 0
-      ? JOB_HEADER_HEIGHT + stage.jobs.length * (JOB_CARD_HEIGHT + JOB_GAP) + 16
-      : STAGE_DEFAULT_HEIGHT;
-  const stageHeight = Math.max(STAGE_DEFAULT_HEIGHT, neededStageHeight);
-
-  const stageNode: RFNode = {
+/** Convert a Stage → simple RF card node for the pipeline-level canvas */
+function stageToRFCardNode(stage: Stage): RFNode {
+  return {
     id: stage.id,
-    type: "stageGroup",
+    type: "stageCard",
     position: stage.position,
-    style: { width: STAGE_DEFAULT_WIDTH, height: stageHeight },
-    data: { name: stage.name } as unknown as Record<string, unknown>,
-  };
-  const jobNodes: RFNode[] = stage.jobs.map((job, jobIndex) => ({
-    id: job.id,
-    type: "jobGroup",
-    position: { x: 20, y: JOB_HEADER_HEIGHT + jobIndex * (JOB_CARD_HEIGHT + JOB_GAP) },
-    parentId: stage.id,
-    style: { width: JOB_CARD_WIDTH, height: JOB_CARD_HEIGHT },
     data: {
-      name: job.name,
-      runsOn: job.runsOn,
-      steps: job.steps,
-      stepEdges: job.stepEdges,
+      name: stage.name,
+      jobCount: stage.jobs.length,
     } as unknown as Record<string, unknown>,
-  }));
-  // Stage node must come before its children in the array
-  return [stageNode, ...jobNodes];
+  };
 }
 
 function stageEdgeToRF(e: GraphEdge): RFEdge {
@@ -89,16 +68,15 @@ function jobEdgeToRF(e: GraphEdge): RFEdge {
   };
 }
 
-// ── Reparenting helpers ───────────────────────────────────────────────────────
-
-/** Convert RF nodes + RF edges → Stage[] + stageEdges[]. Steps are read from job node data. */
-function rfToStages(
+/** RF pipeline-view nodes + edges → Stage[] + stageEdges.
+ *  Job data is sourced from existingStages since stageCard nodes only carry name/jobCount. */
+function rfPipelineViewToStages(
   rfNodes: RFNode[],
   rfEdges: RFEdge[],
-  _existingStages: Stage[],
+  existingStages: Stage[],
 ): { stages: Stage[]; stageEdges: GraphEdge[] } {
-  const stageIds = new Set(rfNodes.filter((n) => n.type === "stageGroup").map((n) => n.id));
-  const jobIds = new Set(rfNodes.filter((n) => n.type === "jobGroup").map((n) => n.id));
+  const stageCardIds = new Set(rfNodes.filter((n) => n.type === "stageCard").map((n) => n.id));
+  const stageById = Object.fromEntries(existingStages.map((s) => [s.id, s]));
 
   const toBackendEdge = (e: RFEdge): GraphEdge => ({
     id: e.id,
@@ -110,46 +88,81 @@ function rfToStages(
     waypoint: (e.data as { waypoint?: { x: number; y: number } } | undefined)?.waypoint,
   });
 
-  // stageEdges: RF edges where both source and target are stage group ids
   const stageEdges: GraphEdge[] = rfEdges
-    .filter((e) => stageIds.has(e.source) && stageIds.has(e.target))
-    .map(toBackendEdge);
-
-  // jobEdges: RF edges where both source and target are job group ids
-  const allJobEdges: GraphEdge[] = rfEdges
-    .filter((e) => jobIds.has(e.source) && jobIds.has(e.target))
+    .filter((e) => stageCardIds.has(e.source) && stageCardIds.has(e.target))
     .map(toBackendEdge);
 
   const stages: Stage[] = rfNodes
-    .filter((n) => n.type === "stageGroup")
-    .map((stageNode) => {
-      const data = stageNode.data as { name?: string };
-      const jobNodes = rfNodes.filter((n) => n.type === "jobGroup" && n.parentId === stageNode.id);
-      const jobNodeIds = new Set(jobNodes.map((j) => j.id));
+    .filter((n) => n.type === "stageCard")
+    .map((n) => {
+      const d = n.data as { name?: string };
+      const existing = stageById[n.id];
       return {
-        id: stageNode.id,
-        name: data.name ?? "stage",
-        position: stageNode.position,
-        jobEdges: allJobEdges.filter((e) => jobNodeIds.has(e.source)),
-        jobs: jobNodes.map((jobNode) => {
-          const jobData = jobNode.data as {
-            name?: string;
-            runsOn?: string;
-            steps?: GraphNode[];
-            stepEdges?: GraphEdge[];
-          };
-          return {
-            id: jobNode.id,
-            name: jobData.name ?? "job",
-            runsOn: jobData.runsOn ?? "ubuntu-latest",
-            steps: jobData.steps ?? [],
-            stepEdges: jobData.stepEdges ?? [],
-          };
-        }),
+        id: n.id,
+        name: d.name ?? existing?.name ?? "stage",
+        position: n.position,
+        jobs: existing?.jobs ?? [],
+        jobEdges: existing?.jobEdges ?? [],
       };
     });
 
   return { stages, stageEdges };
+}
+
+// ── Stage view converters (flat jobCard nodes) ────────────────────────────────
+
+/** Convert Stage.jobs → flat RF jobCard nodes for the stage-level canvas */
+function stageJobsToRFNodes(stage: Stage): RFNode[] {
+  return stage.jobs.map((job, i) => ({
+    id: job.id,
+    type: "jobCard",
+    position: job.position ?? { x: 80 + i * (JOB_CARD_WIDTH + JOB_H_GAP), y: 100 },
+    style: { width: JOB_CARD_WIDTH, height: JOB_CARD_HEIGHT },
+    data: {
+      name: job.name,
+      runsOn: job.runsOn,
+      steps: job.steps,
+      stepEdges: job.stepEdges,
+    } as unknown as Record<string, unknown>,
+  }));
+}
+
+/** RF stage-view nodes + edges → { jobs, jobEdges } for one stage */
+function rfJobNodesToJobs(rfNodes: RFNode[], rfEdges: RFEdge[]): { jobs: Job[]; jobEdges: GraphEdge[] } {
+  const jobIds = new Set(rfNodes.filter((n) => n.type === "jobCard").map((n) => n.id));
+
+  const toBackendEdge = (e: RFEdge): GraphEdge => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: e.type ?? "jobEdge",
+    waypoint: (e.data as { waypoint?: { x: number; y: number } } | undefined)?.waypoint,
+  });
+
+  const jobEdges: GraphEdge[] = rfEdges
+    .filter((e) => jobIds.has(e.source) && jobIds.has(e.target))
+    .map(toBackendEdge);
+
+  const jobs: Job[] = rfNodes
+    .filter((n) => n.type === "jobCard")
+    .map((n) => {
+      const d = n.data as {
+        name?: string;
+        runsOn?: string;
+        steps?: GraphNode[];
+        stepEdges?: GraphEdge[];
+      };
+      return {
+        id: n.id,
+        name: d.name ?? "job",
+        runsOn: d.runsOn ?? "ubuntu-latest",
+        steps: d.steps ?? [],
+        stepEdges: d.stepEdges ?? [],
+        position: n.position,
+      };
+    });
+
+  return { jobs, jobEdges };
 }
 
 // ── YAML export helpers ──────────────────────────────────────────────────────
@@ -259,25 +272,19 @@ const renderStep = (
 };
 
 // ── Legacy flat-graph detection ───────────────────────────────────────────────
-// Documents saved before the Stage refactor may have jobs[] or flat nodes/edges at root.
-// We auto-wrap them into the stages model so they remain editable.
 
 type LegacyGraph = Omit<Graph, "stages" | "stageEdges"> & {
   stages?: Stage[];
   stageEdges?: GraphEdge[];
-  /** Legacy: jobs directly on graph (pre-stages format) */
   jobs?: Job[];
   jobEdges?: GraphEdge[];
-  /** Legacy fields (pre-jobs format) */
   nodes?: GraphNode[];
   edges?: GraphEdge[];
 };
 
 function normalizeLegacyGraph(raw: LegacyGraph): Graph {
   if (raw.stages && raw.stages.length > 0) return raw as Graph;
-  // legacy: had jobs[] directly
   const legacyJobs: Job[] = (raw as { jobs?: Job[] }).jobs ?? [];
-  // legacy jobs may have had runsOn on themselves — preserve per job, fallback to 'ubuntu-latest'
   const legacyRunsOn =
     (legacyJobs[0] as (Job & { runsOn?: string }) | undefined)?.runsOn ?? "ubuntu-latest";
   const cleanedJobs: Job[] = legacyJobs.map((j) => ({
@@ -303,15 +310,6 @@ function normalizeLegacyGraph(raw: LegacyGraph): Graph {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-/**
- * usePipeline — isolates all state and API I/O from PageGraph.
- *
- * Data model:
- *   - RF Group nodes (type "jobGroup") represent Jobs
- *   - RF child nodes (parentId set to a job id) represent Steps
- *   - RF edges between group nodes are jobEdges (job dependencies)
- *   - RF edges between child nodes are stepEdges (step order within a job)
- */
 export const usePipeline = (projectId?: string, pipelineId?: string) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
@@ -323,14 +321,21 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [openDrawerJobId, setOpenDrawerJobId] = useState<string | null>(null);
 
+  // ── Navigation state ────────────────────────────────────────────────────────
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  /** Snapshot of pipeline-view nodes/edges while drilling into a stage */
+  const pipelineCanvasNodesRef = useRef<RFNode[]>([]);
+  const pipelineCanvasEdgesRef = useRef<RFEdge[]>([]);
+
   const {
     getIntersectingNodes,
     updateNodeData: updateRFNodeData,
     getNodes,
+    getEdges,
     fitView,
   } = useReactFlow();
 
-  // Load
+  // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!projectId || !pipelineId) return;
     setStatus("loading");
@@ -339,11 +344,9 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       .then((raw) => {
         const p = normalizeLegacyGraph(raw as LegacyGraph);
         setPipeline(p);
-        const rfNodes = p.stages.flatMap(stageToRFNodes);
-        const rfEdges: RFEdge[] = [
-          ...p.stageEdges.map(stageEdgeToRF),
-          ...p.stages.flatMap((s) => (s.jobEdges ?? []).map(jobEdgeToRF)),
-        ];
+        // Pipeline view: one stageCard node per stage, stageEdges only
+        const rfNodes = p.stages.map(stageToRFCardNode);
+        const rfEdges: RFEdge[] = p.stageEdges.map(stageEdgeToRF);
         setNodes(rfNodes);
         setEdges(rfEdges);
         setStatus("idle");
@@ -357,26 +360,100 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       });
   }, [projectId, pipelineId]);
 
-  const onConnect: OnConnect = useCallback(
-    (connection) => {
-      const currentNodes = getNodes();
-      const sourceNode = currentNodes.find((n) => n.id === connection.source);
-      const targetNode = currentNodes.find((n) => n.id === connection.target);
-      const isJobEdge = sourceNode?.type === "jobGroup" && targetNode?.type === "jobGroup";
-      const edgeType = isJobEdge ? "jobEdge" : "stageEdge";
-      const data = isJobEdge ? {} : { condition: "on_success" };
-      setEdges((eds) => addEdge({ ...connection, type: edgeType, data }, eds));
+  // ── Navigation: enter a stage canvas ────────────────────────────────────────
+  const enterStage = useCallback(
+    (stageId: string) => {
+      const stage = pipeline?.stages.find((s) => s.id === stageId);
+      if (!stage) return;
+
+      // Snapshot current pipeline canvas
+      pipelineCanvasNodesRef.current = getNodes();
+      pipelineCanvasEdgesRef.current = getEdges();
+
+      // Build stage-view canvas
+      const jobNodes = stageJobsToRFNodes(stage);
+      const jobEdges: RFEdge[] = (stage.jobEdges ?? []).map(jobEdgeToRF);
+
+      setNodes(jobNodes);
+      setEdges(jobEdges);
+      setActiveStageId(stageId);
+      setOpenDrawerJobId(null);
+
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 });
+      }, 50);
     },
-    [setEdges, getNodes],
+    [pipeline, getNodes, getEdges, setNodes, setEdges, fitView],
   );
 
-  /**
-   * On drag: highlight the parent group that the dragged node is currently hovering over.
-   * Uses refs to avoid unnecessary setNodes calls when the hover target doesn't change.
-   */
-  const dragOverStageRef = useRef<string | null>(null);
+  // ── Navigation: exit stage, return to pipeline canvas ───────────────────────
+  const exitStage = useCallback(() => {
+    if (!activeStageId) return;
 
-  /** Position (relative to parent) captured at drag start — used to snap back on invalid drop. */
+    // Read job canvas → update pipeline state
+    const currentJobNodes = getNodes();
+    const currentJobEdges = getEdges();
+    const { jobs, jobEdges } = rfJobNodesToJobs(currentJobNodes, currentJobEdges);
+
+    setPipeline((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        stages: prev.stages.map((s) =>
+          s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
+        ),
+      };
+    });
+
+    // Restore pipeline canvas, refreshing the jobCount badge on the exited stage card
+    const updatedJobCount = jobs.length;
+    const restoredNodes = pipelineCanvasNodesRef.current.map((n) =>
+      n.id === activeStageId
+        ? { ...n, data: { ...(n.data as Record<string, unknown>), jobCount: updatedJobCount } }
+        : n,
+    );
+
+    setNodes(restoredNodes);
+    setEdges(pipelineCanvasEdgesRef.current);
+    setActiveStageId(null);
+    setOpenDrawerJobId(null);
+
+    setTimeout(() => {
+      fitView({ padding: 0.15, duration: 300 });
+    }, 50);
+  }, [activeStageId, getNodes, getEdges, setPipeline, setNodes, setEdges, fitView]);
+
+  // ── Helper: get current full pipeline state from whichever canvas is active ─
+  const getCurrentStagesAndEdges = useCallback((): {
+    stages: Stage[];
+    stageEdges: GraphEdge[];
+  } => {
+    if (activeStageId) {
+      const { jobs, jobEdges } = rfJobNodesToJobs(getNodes(), getEdges());
+      const allStages = (pipeline?.stages ?? []).map((s) =>
+        s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
+      );
+      return rfPipelineViewToStages(
+        pipelineCanvasNodesRef.current,
+        pipelineCanvasEdgesRef.current,
+        allStages,
+      );
+    }
+    return rfPipelineViewToStages(nodes, edges, pipeline?.stages ?? []);
+  }, [activeStageId, nodes, edges, pipeline, getNodes, getEdges]);
+
+  // ── onConnect ────────────────────────────────────────────────────────────────
+  const onConnect: OnConnect = useCallback(
+    (connection) => {
+      const edgeType = activeStageId ? "jobEdge" : "stageEdge";
+      const data = edgeType === "stageEdge" ? { condition: "on_success" } : {};
+      setEdges((eds) => addEdge({ ...connection, type: edgeType, data }, eds));
+    },
+    [setEdges, activeStageId],
+  );
+
+  // ── Drag handlers (legacy reparenting — no-op for new stageCard/jobCard types) ─
+  const dragOverStageRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const onNodeDragStart = useCallback((_event: ReactMouseEvent, draggedNode: RFNode) => {
@@ -402,15 +479,11 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     [],
   );
 
-  /**
-   * On drag stop: reparent node to the appropriate parent (if changed), then clear drag-over highlights.
-   */
   const onNodeDragStop = useCallback(
     (_event: ReactMouseEvent, draggedNode: RFNode) => {
       if (draggedNode.type === "stageGroup") return;
       if (draggedNode.type !== "jobGroup") return;
 
-      // Clear drag-over highlight
       if (dragOverStageRef.current) {
         updateRFNodeData(dragOverStageRef.current, { dragOver: false });
         dragOverStageRef.current = null;
@@ -433,7 +506,6 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         return;
       }
 
-      // Reparent: compute position relative to new stage
       const draggedAbsPos =
         (draggedNode as RFNode & { positionAbsolute?: { x: number; y: number } })
           .positionAbsolute ?? draggedNode.position;
@@ -452,13 +524,11 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     [setNodes],
   );
 
-  /**
-   * Add a new step to a specific job (or the first job if none specified).
-   * Steps are stored in job node data (not as RF nodes on the canvas).
-   */
+  // ── addStep ──────────────────────────────────────────────────────────────────
   const addStep = useCallback(
     (type: NodeType, data: NodeData, jobId?: string) => {
-      const targetJobId = jobId ?? nodes.find((n) => n.type === "jobGroup")?.id;
+      const targetJobId =
+        jobId ?? nodes.find((n) => n.type === "jobGroup" || n.type === "jobCard")?.id;
       if (!targetJobId) {
         console.warn("No job exists. Create a job first before adding steps.");
         return;
@@ -477,44 +547,25 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     [nodes, updateRFNodeData],
   );
 
-  /**
-   * Add a new empty Job (group node) inside the specified stage (or the first stage found).
-   */
+  // ── addJob ───────────────────────────────────────────────────────────────────
+  /** Add a new job. Only works when inside a stage (activeStageId set). */
   const addJob = useCallback(
-    (stageId?: string, name?: string, runsOn?: string) => {
-      const id = `job-${Date.now()}`;
-      const targetStageId = stageId ?? nodes.find((n) => n.type === "stageGroup")?.id;
-      if (!targetStageId) {
-        console.warn("No stage exists. Create a stage first.");
+    (_stageId?: string, name?: string, runsOn?: string) => {
+      if (!activeStageId) {
+        console.warn("addJob: must be in stage view (drill into a stage first).");
         return;
       }
-      const jobsInStage = nodes.filter(
-        (n) => n.type === "jobGroup" && n.parentId === targetStageId,
-      ).length;
-      const jobName = name ?? `job-${jobsInStage + 1}`;
-      // Stack jobs vertically; expand the parent stage height to fit
-      const newJobY = JOB_HEADER_HEIGHT + jobsInStage * (JOB_CARD_HEIGHT + JOB_GAP);
-      const neededStageHeight = newJobY + JOB_CARD_HEIGHT + JOB_GAP + 16;
+      const id = `job-${Date.now()}`;
+      const existingJobs = nodes.filter((n) => n.type === "jobCard");
+      const jobCount = existingJobs.length;
+      const jobName = name ?? `job-${jobCount + 1}`;
+
       setNodes((nds) => [
-        ...nds.map((n) =>
-          n.id === targetStageId
-            ? {
-                ...n,
-                style: {
-                  ...n.style,
-                  height: Math.max(
-                    typeof n.style?.height === "number" ? n.style.height : STAGE_DEFAULT_HEIGHT,
-                    neededStageHeight,
-                  ),
-                },
-              }
-            : n,
-        ),
+        ...nds,
         {
           id,
-          type: "jobGroup",
-          position: { x: 20, y: newJobY },
-          parentId: targetStageId,
+          type: "jobCard",
+          position: { x: 80 + jobCount * (JOB_CARD_WIDTH + JOB_H_GAP), y: 100 },
           style: { width: JOB_CARD_WIDTH, height: JOB_CARD_HEIGHT },
           data: {
             name: jobName,
@@ -525,19 +576,18 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         },
       ]);
     },
-    [setNodes, nodes],
+    [activeStageId, nodes, setNodes],
   );
 
-  /**
-   * Add a new empty Stage (stage group node) to the canvas.
-   */
+  // ── addStage ─────────────────────────────────────────────────────────────────
   const addStage = useCallback(
     (name?: string) => {
       const id = `stage-${Date.now()}`;
-      const existingStages = nodes.filter((n) => n.type === "stageGroup");
+      const existingStages = nodes.filter((n) => n.type === "stageCard");
       const stageCount = existingStages.length;
       const stageName = name ?? `stage-${stageCount + 1}`;
-      // Find the last stage in the chain (the one with no outgoing stageEdge to another stage)
+
+      // Find the last stage (no outgoing stageEdge)
       const stageIds = new Set(existingStages.map((n) => n.id));
       const sourcedIds = new Set(
         edges.filter((e) => stageIds.has(e.source) && stageIds.has(e.target)).map((e) => e.source),
@@ -545,18 +595,30 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       const lastStage =
         existingStages.find((n) => !sourcedIds.has(n.id)) ?? existingStages[stageCount - 1];
 
+      const newPos = { x: 80 + stageCount * (STAGE_CARD_WIDTH + 80), y: 80 };
+
+      // Keep pipeline domain state in sync
+      setPipeline((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          stages: [
+            ...prev.stages,
+            { id, name: stageName, jobs: [], position: newPos },
+          ],
+        };
+      });
+
       setNodes((nds) => [
         ...nds,
         {
           id,
-          type: "stageGroup",
-          position: { x: 80 + stageCount * (STAGE_DEFAULT_WIDTH + 80), y: 80 },
-          style: { width: STAGE_DEFAULT_WIDTH, height: STAGE_DEFAULT_HEIGHT },
-          data: { name: stageName } as unknown as Record<string, unknown>,
+          type: "stageCard",
+          position: newPos,
+          data: { name: stageName, jobCount: 0 } as unknown as Record<string, unknown>,
         },
       ]);
 
-      // Auto-link from the last stage to the new one
       if (lastStage) {
         setEdges((eds) => [
           ...eds,
@@ -570,15 +632,16 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         ]);
       }
     },
-    [setNodes, setEdges, nodes, edges],
+    [nodes, edges, setNodes, setEdges, setPipeline],
   );
 
+  // ── save ─────────────────────────────────────────────────────────────────────
   const save = useCallback(async () => {
     if (!projectId || !pipelineId) return;
     setStatus("saving");
     setError(null);
     try {
-      const { stages, stageEdges } = rfToStages(nodes, edges, pipeline?.stages ?? []);
+      const { stages, stageEdges } = getCurrentStagesAndEdges();
       const result = await api.pipelines.update(projectId, pipelineId, {
         viewport,
         stages,
@@ -592,14 +655,14 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     } finally {
       setStatus("idle");
     }
-  }, [projectId, pipelineId, nodes, edges, viewport, pipeline]);
+  }, [projectId, pipelineId, viewport, getCurrentStagesAndEdges]);
 
+  // ── exportToYaml ─────────────────────────────────────────────────────────────
   const exportToYaml = useCallback(
     (format: "github" | "gitlab" | "azure" = "github") => {
-      const { stages, stageEdges } = rfToStages(nodes, edges, pipeline?.stages ?? []);
+      const { stages, stageEdges } = getCurrentStagesAndEdges();
       const stageOrder = topoSortStages(stages, stageEdges);
 
-      // Build map: targetStageId → condition from the incoming stage edge
       const stageConditionMap: Record<string, "on_success" | "always" | "on_failure"> = {};
       for (const edge of stageEdges) {
         stageConditionMap[edge.target] = edge.condition ?? "on_success";
@@ -729,9 +792,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     },
-    [nodes, edges, pipeline],
+    [getCurrentStagesAndEdges, pipeline],
   );
 
+  // ── deletePipeline ───────────────────────────────────────────────────────────
   const deletePipeline = useCallback(async () => {
     if (!projectId || !pipelineId) return;
     setStatus("deleting");
@@ -739,6 +803,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     await api.pipelines.delete(projectId, pipelineId);
   }, [projectId, pipelineId]);
 
+  // ── Node selection & drawer ──────────────────────────────────────────────────
   const selectNode = useCallback((id: string | null) => {
     setSelectedNodeId(id);
   }, []);
@@ -781,6 +846,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     savedOk,
     selectedNodeId,
     openDrawerJobId,
+    activeStageId,
     onNodesChange,
     onEdgesChange,
     onConnect,
@@ -798,6 +864,8 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     closeJobDrawer,
     updateJob,
     updateNodeData,
+    enterStage,
+    exitStage,
     setViewport,
   };
 };

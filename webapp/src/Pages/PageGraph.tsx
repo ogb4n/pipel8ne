@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
     ReactFlow,
@@ -18,10 +18,13 @@ import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
 import StageEdge from "../Components/Graph/edges/StageEdge";
 import JobEdge from "../Components/Graph/edges/JobEdge";
 import StepDrawer from "../Components/Graph/StepDrawer";
+import PipelineBreadcrumb from "../Components/Graph/PipelineBreadcrumb";
 import type { GraphNode, GraphEdge } from "../Api/types";
 
 const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
-const defaultEdgeOptions = { type: "stageEdge" } as const;
+
+/** Node types that open a config panel when selected (step-level nodes, not stage/job cards) */
+const CONFIG_PANEL_NODE_TYPES = new Set(["cicdNode", "triggerNode"]);
 
 interface PageGraphCanvasProps {
     projectId?: string;
@@ -33,8 +36,11 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
     const {
         pipeline, nodes, edges, status, error, savedOk,
-        selectedNodeId, openDrawerJobId, onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
-        addJob, addStage, save, exportToYaml, deletePipeline, selectNode, updateNodeData, setViewport,
+        selectedNodeId, openDrawerJobId, activeStageId,
+        onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
+        addJob, addStage, save, exportToYaml, deletePipeline,
+        selectNode, enterStage, exitStage,
+        updateNodeData, setViewport,
         openJobDrawer, closeJobDrawer, updateJob,
     } = usePipeline(projectId, pipelineId);
 
@@ -47,8 +53,24 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
         azure: "Azure DevOps",
     };
 
-    const selectedNode = nodes.find((n) => n.id === selectedNodeId && n.type !== "jobGroup" && n.type !== "stageGroup") ?? null;
+    // Only show NodeConfigPanel for step-type nodes (not stage/job cards)
+    const selectedNode = nodes.find(
+        (n) => n.id === selectedNodeId && CONFIG_PANEL_NODE_TYPES.has(n.type ?? ""),
+    ) ?? null;
+
     const drawerJobNode = openDrawerJobId ? nodes.find((n) => n.id === openDrawerJobId) ?? null : null;
+
+    // Active stage name for breadcrumb
+    const activeStageName = useMemo(
+        () => (activeStageId ? (pipeline?.stages.find((s) => s.id === activeStageId)?.name ?? null) : null),
+        [activeStageId, pipeline],
+    );
+
+    // Dynamic edge options: stageEdge in pipeline view, jobEdge in stage view
+    const defaultEdgeOptions = useMemo(
+        () => ({ type: activeStageId ? "jobEdge" : "stageEdge" }),
+        [activeStageId],
+    );
 
     const handleDelete = async () => {
         if (!window.confirm("Supprimer cette pipeline ? Cette action est irréversible.")) return;
@@ -79,18 +101,13 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
         <div className="flex flex-col" style={{ height: "calc(100vh - 3rem)" }}>
             {/* Toolbar */}
             <div className="flex items-center gap-2 px-4 py-0 h-11 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-                <Link
-                    to={`/projects/${projectId}/pipelines`}
-                    className="text-xs text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
-                >
-                    Pipelines
-                </Link>
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300 dark:text-zinc-700">
-                    <path d="m9 18 6-6-6-6" />
-                </svg>
-                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
-                    {pipeline?.name ?? "Pipeline"}
-                </span>
+                {/* Breadcrumb */}
+                <PipelineBreadcrumb
+                    projectId={projectId ?? ""}
+                    pipelineName={pipeline?.name ?? "Pipeline"}
+                    stageName={activeStageName}
+                    onExitStage={exitStage}
+                />
 
                 <div className="ml-auto flex items-center gap-2">
                     {error && <span className="text-xs text-red-500">{error}</span>}
@@ -164,33 +181,40 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
             {/* Canvas */}
             <div className="flex-1 relative">
-                {/* Floating toolbar */}
-                <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 10 }} className="flex flex-col gap-2">
-                    <button
-                        onClick={() => addStage()}
-                        title="Ajouter une nouvelle stage"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" />
-                            <path d="M12 8v8M8 12h8" />
-                        </svg>
-                        + Stage
-                    </button>
-                    <button
-                        onClick={() => addJob()}
-                        title="Ajouter un job dans la première stage"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" />
-                            <path d="M12 8v8M8 12h8" />
-                        </svg>
-                        + Job
-                    </button>
+                {/* Floating toolbar — context-aware */}
+                <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10 }} className="flex flex-col gap-2">
+                    {!activeStageId ? (
+                        /* Pipeline view: only add stage */
+                        <button
+                            onClick={() => addStage()}
+                            title="Ajouter une nouvelle stage"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M12 8v8M8 12h8" />
+                            </svg>
+                            + Stage
+                        </button>
+                    ) : (
+                        /* Stage view: only add job */
+                        <button
+                            onClick={() => addJob()}
+                            title="Ajouter un job dans cette stage"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M12 8v8M8 12h8" />
+                            </svg>
+                            + Job
+                        </button>
+                    )}
                 </div>
 
-                <GraphActionsContext.Provider value={{ selectNode }}>
+                <GraphActionsContext.Provider
+                    value={{ selectNode, enterStage, exitStage, openJobDrawer }}
+                >
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
@@ -202,7 +226,6 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                         onConnect={onConnect}
                         onNodeClick={(_: React.MouseEvent, node: RFNode) => {
                             selectNode(node.id);
-                            if (node.type === 'jobGroup') openJobDrawer(node.id);
                         }}
                         onPaneClick={() => selectNode(null)}
                         onMoveEnd={(_: unknown, vp: RFViewport) => setViewport(vp)}
@@ -222,14 +245,14 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                         <Controls />
                         <MiniMap
                             nodeColor={(node) => {
-                                if (node.type === 'stageGroup') return 'rgba(139,92,246,0.6)';
-                                if (node.type === 'jobGroup') return 'rgba(99,102,241,0.6)';
-                                return '#52525b';
+                                if (node.type === "stageCard" || node.type === "stageGroup") return "rgba(139,92,246,0.6)";
+                                if (node.type === "jobCard" || node.type === "jobGroup") return "rgba(99,102,241,0.6)";
+                                return "#52525b";
                             }}
                             maskColor="rgba(0,0,0,0.6)"
                             style={{
-                                background: 'rgba(15,10,30,0.8)',
-                                border: '1px solid rgba(139,92,246,0.2)',
+                                background: "rgba(15,10,30,0.8)",
+                                border: "1px solid rgba(139,92,246,0.2)",
                                 borderRadius: 8,
                             }}
                         />
@@ -247,8 +270,8 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                 {drawerJobNode && (
                     <StepDrawer
                         jobId={drawerJobNode.id}
-                        jobName={(drawerJobNode.data as { name?: string }).name ?? ''}
-                        runsOn={(drawerJobNode.data as { runsOn?: string }).runsOn ?? 'ubuntu-latest'}
+                        jobName={(drawerJobNode.data as { name?: string }).name ?? ""}
+                        runsOn={(drawerJobNode.data as { runsOn?: string }).runsOn ?? "ubuntu-latest"}
                         steps={(drawerJobNode.data as { steps?: GraphNode[] }).steps ?? []}
                         stepEdges={(drawerJobNode.data as { stepEdges?: GraphEdge[] }).stepEdges ?? []}
                         onClose={closeJobDrawer}
@@ -270,4 +293,3 @@ const PageGraph: React.FC = () => {
 };
 
 export default PageGraph;
-
