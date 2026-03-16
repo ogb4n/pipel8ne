@@ -3,7 +3,7 @@ import type {
   Project,
   ProjectVisibility,
   Graph,
-  Job,
+  Stage,
   GraphEdge,
   Viewport,
   Credential,
@@ -162,7 +162,7 @@ export const api = {
     update: (
       projectId: string,
       pipelineId: string,
-      data: { viewport: Viewport; jobs: Job[]; jobEdges: GraphEdge[] },
+      data: { viewport: Viewport; stages: Stage[]; stageEdges: GraphEdge[] },
     ) =>
       request<Graph>(`/api/projects/${projectId}/pipelines/${pipelineId}`, {
         method: "PUT",

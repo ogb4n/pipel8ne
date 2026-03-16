@@ -222,34 +222,38 @@ export interface GraphEdge {
   type: string;
   /** Optional reroute waypoint stored as flow coordinates */
   waypoint?: { x: number; y: number };
+  /** Execution condition for stage→stage edges */
+  condition?: "on_success" | "always" | "on_failure";
 }
 export interface Viewport {
   x: number;
   y: number;
   zoom: number;
 }
-/**
- * A Job groups a set of steps (nodes) that run on the same runner.
- * stepEdges define execution order within the job.
- * Dependencies between jobs are expressed via Graph.jobEdges.
- */
 export interface Job {
   id: string;
   name: string;
-  /** Free-form runner label e.g. "ubuntu-latest", "self-hosted" */
   runsOn: string;
   steps: GraphNode[];
   stepEdges: GraphEdge[];
-  /** Position of the job group node on the React Flow canvas */
+}
+export interface Stage {
+  id: string;
+  name: string;
+  /** Jobs belonging to this stage — always run in parallel */
+  jobs: Job[];
+  /** Canvas position of the stage group node */
   position: { x: number; y: number };
+  /** Dependencies between jobs within this stage */
+  jobEdges?: GraphEdge[];
 }
 export interface Graph {
   id: string;
   projectId: string;
   name: string;
   viewport: Viewport;
-  /** Jobs composing the pipeline. */
-  jobs: Job[];
-  /** Edges between jobs — source/target are job IDs, define execution order. */
-  jobEdges: GraphEdge[];
+  /** Stages composing the pipeline. */
+  stages: Stage[];
+  /** Edges between stages — source/target are stage IDs, define execution order. */
+  stageEdges: GraphEdge[];
 }
