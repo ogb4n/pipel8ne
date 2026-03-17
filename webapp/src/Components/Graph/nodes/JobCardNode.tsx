@@ -19,7 +19,7 @@ interface JobCardNodeProps {
 
 const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
     const { setNodes } = useReactFlow();
-    const { openJobDrawer } = useGraphActions();
+    const { enterJob } = useGraphActions();
     const [editingName, setEditingName] = useState(false);
     const [editingRunner, setEditingRunner] = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -203,7 +203,7 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                     )}
                 </div>
 
-                {/* Body — double-click to open step drawer */}
+                {/* Body — double-click to open job canvas */}
                 <div
                     style={{
                         flex: 1,
@@ -213,8 +213,8 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                         padding: "0 12px",
                         cursor: "pointer",
                     }}
-                    onDoubleClick={() => openJobDrawer(id)}
-                    title="Double-clic pour éditer les steps"
+                    onDoubleClick={() => enterJob(id)}
+                    title="Double-clic pour éditer les tasks"
                 >
                     <span
                         style={{
@@ -224,8 +224,8 @@ const JobCardNode: React.FC<JobCardNodeProps> = ({ id, data, selected }) => {
                         }}
                     >
                         {stepCount === 0
-                            ? "Aucun step · double-clic"
-                            : `${stepCount} step${stepCount > 1 ? "s" : ""} · double-clic`}
+                            ? "Aucun task · double-clic"
+                            : `${stepCount} task${stepCount > 1 ? "s" : ""} · double-clic`}
                     </span>
                 </div>
             </div>

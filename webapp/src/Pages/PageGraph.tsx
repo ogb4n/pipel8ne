@@ -17,14 +17,14 @@ import { NodeConfigPanel } from "../Components/Graph/NodeConfigPanel";
 import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
 import StageEdge from "../Components/Graph/edges/StageEdge";
 import JobEdge from "../Components/Graph/edges/JobEdge";
-import StepDrawer from "../Components/Graph/StepDrawer";
 import PipelineBreadcrumb from "../Components/Graph/PipelineBreadcrumb";
-import type { GraphNode, GraphEdge } from "../Api/types";
 
 const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
 
 /** Node types that open a config panel when selected (step-level nodes, not stage/job cards) */
-const CONFIG_PANEL_NODE_TYPES = new Set(["cicdNode", "triggerNode"]);
+const CONFIG_PANEL_NODE_TYPES = new Set([
+    "trigger", "shell_command", "docker", "git", "test", "build", "deploy", "notification", "condition",
+]);
 
 interface PageGraphCanvasProps {
     projectId?: string;
@@ -36,12 +36,12 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
     const {
         pipeline, nodes, edges, status, error, savedOk,
-        selectedNodeId, openDrawerJobId, activeStageId,
+        selectedNodeId, activeStageId, activeJobId,
         onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
-        addJob, addStage, save, exportToYaml, deletePipeline,
-        selectNode, enterStage, exitStage,
+        addJob, addStage, addStepNode, save, exportToYaml, deletePipeline,
+        selectNode, enterStage, exitStage, enterJob, exitJob, exitJobAndStage,
         updateNodeData, setViewport,
-        openJobDrawer, closeJobDrawer, updateJob,
+        openJobDrawer,
     } = usePipeline(projectId, pipelineId);
 
     const [exportFormat, setExportFormat] = useState<"github" | "gitlab" | "azure">("github");
@@ -58,18 +58,39 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
         (n) => n.id === selectedNodeId && CONFIG_PANEL_NODE_TYPES.has(n.type ?? ""),
     ) ?? null;
 
-    const drawerJobNode = openDrawerJobId ? nodes.find((n) => n.id === openDrawerJobId) ?? null : null;
-
     // Active stage name for breadcrumb
     const activeStageName = useMemo(
         () => (activeStageId ? (pipeline?.stages.find((s) => s.id === activeStageId)?.name ?? null) : null),
         [activeStageId, pipeline],
     );
 
-    // Dynamic edge options: stageEdge in pipeline view, jobEdge in stage view
+    // Active job name for breadcrumb
+    const activeJobName = useMemo(() => {
+        if (!activeJobId) return null;
+
+        // Prefer the ReactFlow node data, which is kept in sync while editing
+        const jobNode = nodes.find((n) => n.id === activeJobId);
+        const jobNodeData = jobNode?.data as any | undefined;
+        const nodeName: string | null =
+            jobNodeData?.name ??
+            jobNodeData?.label ??
+            jobNodeData?.title ??
+            null;
+
+        if (nodeName) {
+            return nodeName;
+        }
+
+        // Fallback to pipeline data (e.g. immediately after initial load)
+        if (!activeStageId) return null;
+        const stage = pipeline?.stages.find((s) => s.id === activeStageId);
+        return stage?.jobs.find((j) => j.id === activeJobId)?.name ?? null;
+    }, [activeJobId, activeStageId, nodes, pipeline]);
+
+    // Dynamic edge options: stageEdge → jobEdge → default (step level)
     const defaultEdgeOptions = useMemo(
-        () => ({ type: activeStageId ? "jobEdge" : "stageEdge" }),
-        [activeStageId],
+        () => ({ type: activeJobId ? "default" : activeStageId ? "jobEdge" : "stageEdge" }),
+        [activeStageId, activeJobId],
     );
 
     const handleDelete = async () => {
@@ -107,6 +128,9 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                     pipelineName={pipeline?.name ?? "Pipeline"}
                     stageName={activeStageName}
                     onExitStage={exitStage}
+                    jobName={activeJobName}
+                    onExitJob={exitJob}
+                    onExitJobAndStage={exitJobAndStage}
                 />
 
                 <div className="ml-auto flex items-center gap-2">
@@ -183,7 +207,20 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
             <div className="flex-1 relative">
                 {/* Floating toolbar — context-aware */}
                 <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10 }} className="flex flex-col gap-2">
-                    {!activeStageId ? (
+                    {activeJobId ? (
+                        /* Job canvas: add first task (trigger) */
+                        <button
+                            onClick={() => addStepNode("shell_command")}
+                            title="Ajouter une task dans ce job"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-zinc-500/40 text-zinc-400 hover:bg-zinc-500/10 hover:border-zinc-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M12 8v8M8 12h8" />
+                            </svg>
+                            + Task
+                        </button>
+                    ) : !activeStageId ? (
                         /* Pipeline view: only add stage */
                         <button
                             onClick={() => addStage()}
@@ -213,7 +250,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                 </div>
 
                 <GraphActionsContext.Provider
-                    value={{ selectNode, enterStage, exitStage, openJobDrawer }}
+                    value={{ selectNode, enterStage, exitStage, openJobDrawer, enterJob, exitJob }}
                 >
                     <ReactFlow
                         nodes={nodes}
@@ -247,6 +284,15 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                             nodeColor={(node) => {
                                 if (node.type === "stageCard" || node.type === "stageGroup") return "rgba(139,92,246,0.6)";
                                 if (node.type === "jobCard" || node.type === "jobGroup") return "rgba(99,102,241,0.6)";
+                                if (node.type === "trigger") return "#7c3aed";
+                                if (node.type === "shell_command") return "#52525b";
+                                if (node.type === "docker") return "#2563eb";
+                                if (node.type === "git") return "#ea580c";
+                                if (node.type === "test") return "#16a34a";
+                                if (node.type === "build") return "#ca8a04";
+                                if (node.type === "deploy") return "#4f46e5";
+                                if (node.type === "notification") return "#db2777";
+                                if (node.type === "condition") return "#d97706";
                                 return "#52525b";
                             }}
                             maskColor="rgba(0,0,0,0.6)"
@@ -267,17 +313,6 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                     )}
                 </GraphActionsContext.Provider>
 
-                {drawerJobNode && (
-                    <StepDrawer
-                        jobId={drawerJobNode.id}
-                        jobName={(drawerJobNode.data as { name?: string }).name ?? ""}
-                        runsOn={(drawerJobNode.data as { runsOn?: string }).runsOn ?? "ubuntu-latest"}
-                        steps={(drawerJobNode.data as { steps?: GraphNode[] }).steps ?? []}
-                        stepEdges={(drawerJobNode.data as { stepEdges?: GraphEdge[] }).stepEdges ?? []}
-                        onClose={closeJobDrawer}
-                        onUpdateJob={updateJob}
-                    />
-                )}
             </div>
         </div>
     );

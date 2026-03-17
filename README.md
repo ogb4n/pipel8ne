@@ -1,88 +1,146 @@
-# Pipel8ne Template - React & Tailwind
+# pipel8ne
 
-Ce projet est un template moderne et léger conçu pour démarrer rapidement le développement d'applications web performantes. Il est propulsé par les dernières versions de l'écosystème React : **Vite 7**, **React 19**, et **Tailwind CSS 4**.
+pipel8ne is an open-source visual CI/CD pipeline builder — think n8n, but built for continuous integration and delivery workflows.
 
-## 🚀 Fonctionnalités Clés
+Design your pipelines with a drag-and-drop graph editor, connect directly to your Git platform, and push changes to your repositories without ever touching a YAML file manually.
 
-- **⚡ Stack Ultra-Rapide** : Utilise [Vite 7](https://vitejs.dev/) pour un démarrage instantané et un HMR (Hot Module Replacement) fulgurant.
-- **🎨 Styling Moderne** : Intègre [Tailwind CSS v4](https://tailwindcss.com/) pour un design utility-first, entièrement typé.
-- **🌙 Dark Mode Natif** : Gestion du thème (Clair/Sombre) incluse via un Context React, avec détection automatique des préférences système et persistance locale.
-- **Routage** : Configuration prête à l'emploi avec [React Router v7](https://reactrouter.com/).
-- **✅ Testing** : Environnement de test préconfiguré avec [Vitest](https://vitest.dev/) et React Testing Library.
-- **TypeScript** : Configuration stricte pour une meilleure sécurité de type et une meilleure expérience développeur.
+## Vision
 
-## 📂 Structure du Frontend
+Most CI/CD tools force you to write and maintain configuration files by hand. pipel8ne takes a different approach: pipelines are built visually, stored in the platform, and synchronized directly with your repositories. The goal is to bridge the gap between visual pipeline design and the actual workflow files that live in your codebase — with direct integrations to GitHub, GitLab, and Azure DevOps.
 
-Le code source de l'application se trouve dans le dossier `webapp/`.
+## Features
+
+**Today**
+
+- **Visual graph editor** — build pipelines by connecting nodes on a canvas
+- **3-level hierarchy** — organize work into Stages → Jobs → Steps
+- **Step types** — trigger, shell command, Docker, Git, test, build, deploy, notification, condition
+- **YAML export** — export to GitHub Actions, GitLab CI, or Azure DevOps format
+- **Project management** — group pipelines by project, with public/private visibility
+- **Authentication** — JWT-based auth with access/refresh tokens
+- **Credentials & API keys** — securely store provider credentials and manage API keys
+- **User management** — admin panel to create users and manage roles
+- **Dark mode** — system preference detection with manual toggle
+
+**Planned**
+
+- **Platform integrations** — connect your GitHub, GitLab, or Azure DevOps accounts
+- **Direct repo sync** — push pipeline changes directly to a repository branch, or by manual file import
+- **Import from repo** — load and edit existing workflow files from a connected repository
+- **Webhook triggers** — receive events from your platform and react in real time
+- **More step types** — expanding the node library with new integrations and services
+
+## Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, React Flow
+- **Backend**: Node.js, Fastify, TypeScript
+- **Database**: MongoDB
+
+## Getting started
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/) and Docker Compose
+- [Node.js](https://nodejs.org/) 18+ (for local development without Docker)
+
+### Run with Docker
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/your-username/pipel8ne.git
+   cd pipel8ne
+   ```
+
+2. Create a `.env` file at the root:
+
+   ```env
+   JWT_SECRET=your_secret_here
+   SECRETS_ENCRYPTION_KEY=your_32_char_key_here
+   ```
+
+3. Start the stack:
+   ```bash
+   docker compose up
+   ```
+
+The app will be available at `http://localhost:3000`.
+
+### Run locally (development)
+
+A `docker-compose.dev.yml` is provided to spin up only the MongoDB instance, so you can run the backend and frontend directly on your machine.
+
+**1. Start the database:**
 
 ```bash
-webapp/
-├── src/
-│   ├── Components/ # Composants réutilisables (Header, ThemeToggle...)
-│   ├── Context/    # Gestion d'état global (ThemeContext)
-│   ├── Pages/      # Vues de l'application (Home, RTL, Tailwind demo)
-│   ├── App.tsx     # Point d'entrée principal avec le Routing
-│   └── main.tsx    # Montage de l'application React
-├── public/         # Fichiers statiques
-└── ...config files # (vite.config.ts, tailwind.config.js, etc.)
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-## 🛠️ Installation et Démarrage
+**2. Configure the backend environment:**
 
-### Prérequis
+Copy the example env file and fill in the values:
 
-- [Node.js](https://nodejs.org/) (version 18 ou supérieure recommandée)
-- npm ou yarn
+```bash
+cp backend/.env.example backend/.env
+```
 
-### 1. Installation des dépendances
+```env
+DATABASE_URL=mongodb://pipel8ne:dev_password@localhost:27017/pipel8ne_dev?authSource=admin
+JWT_SECRET=        # generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+SECRETS_ENCRYPTION_KEY=  # generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+NODE_ENV=development
+```
 
-Rendez-vous dans le dossier de l'application :
+**3. Start the backend:**
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+**4. Start the frontend:**
 
 ```bash
 cd webapp
 npm install
-```
-
-### 2. Lancer le serveur de développement
-
-Pour démarrer l'application en mode local :
-
-```bash
 npm run dev
 ```
 
-L'application sera accessible à l'adresse indiquée dans le terminal (généralement `http://localhost:5173`).
+The frontend dev server starts at `http://localhost:5173` and proxies API requests to the backend on port 3000.
 
-## 📜 Scripts Disponibles
+## Available scripts
 
-Dans le dossier `webapp`, vous pouvez exécuter :
+**Frontend** (`webapp/`):
 
-| Commande          | Description                                                      |
-| :---------------- | :--------------------------------------------------------------- |
-| `npm run dev`     | Lance le serveur de développement Vite.                          |
-| `npm run build`   | Compile l'application pour la production dans le dossier `dist`. |
-| `npm run preview` | Prévisualise la version de production localement.                |
-| `npm test`        | Lance la suite de tests unitaires avec Vitest.                   |
+| Command           | Description                  |
+| ----------------- | ---------------------------- |
+| `npm run dev`     | Start the development server |
+| `npm run build`   | Build for production         |
+| `npm run preview` | Preview the production build |
+| `npm test`        | Run unit tests               |
 
-## 🧩 Personnalisation
+**Backend** (`backend/`):
 
-### Thèmes et Couleurs
+| Command         | Description                     |
+| --------------- | ------------------------------- |
+| `npm run dev`   | Start the backend in watch mode |
+| `npm run build` | Compile TypeScript              |
+| `npm start`     | Start the compiled backend      |
 
-La gestion du thème se trouve dans `src/Context/ThemeContext.tsx`.
-Le design utilise les classes utilitaires de Tailwind. Vous pouvez modifier la configuration globale dans `src/App.css` ou via les variables CSS natives.
+## Documentation
 
-### Ajouter une nouvelle page
+- [Architecture](docs/architecture.md) — backend hexagonal architecture, frontend structure, data flow
+- [Pipeline concepts](docs/pipeline-concepts.md) — stages, jobs, steps, node types, YAML export
+- [API reference](docs/api.md) — all REST endpoints
+- [Development guide](docs/development.md) — local setup, env vars, scripts
+- [Deployment](docs/deployment.md) — Docker, reverse proxy, production checklist
+- [Contributing](docs/contributing.md) — how to add features, doc maintenance rules
 
-1. Créez un composant dans `src/Pages/`.
-2. Importez-le dans `src/App.tsx`.
-3. Ajoutez une nouvelle `<Route>` dans la section `<Routes>` :
-   ```tsx
-   <Route path="/ma-nouvelle-page" element={<MaNouvellePage />} />
-   ```
+## Contributing
 
-## 📦 Déploiement
+Pull requests are welcome. For significant changes, open an issue first to discuss what you'd like to change.
 
-Le projet est configuré pour être build statiquement.
+## License
 
-1. Exécutez `npm run build`.
-2. Le contenu du dossier `dist` généré peut être hébergé sur n'importe quel serveur statique (Nginx, Vercel, Netlify, S3, etc.).
+[MIT](LICENSE)
