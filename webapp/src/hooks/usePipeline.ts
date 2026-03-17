@@ -174,8 +174,9 @@ function jobStepsToRFNodes(job: Job): RFNode[] {
     id: step.id,
     type: step.type,
     position: {
-      x: step.positionX !== 0 ? step.positionX : 80 + i * 300,
-      y: step.positionY !== 0 ? step.positionY : 100,
+      // Use stored coordinates when present; fall back to defaults only if unset.
+      x: step.positionX ?? 80 + i * 300,
+      y: step.positionY ?? 100,
     },
     data: step.data as unknown as Record<string, unknown>,
   }));
