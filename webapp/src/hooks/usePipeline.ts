@@ -460,7 +460,6 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     setNodes(restoredNodes);
     setEdges(pipelineCanvasEdgesRef.current);
     setActiveStageId(null);
-    setOpenDrawerJobId(null);
 
     setTimeout(() => {
       fitView({ padding: 0.15, duration: 300 });
@@ -492,7 +491,6 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       setNodes(stepNodes);
       setEdges(rfStepEdges);
       setActiveJobId(jobId);
-      setOpenDrawerJobId(null);
 
       setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
     },
