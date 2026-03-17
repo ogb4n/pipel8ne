@@ -66,10 +66,26 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
     // Active job name for breadcrumb
     const activeJobName = useMemo(() => {
-        if (!activeJobId || !activeStageId) return null;
+        if (!activeJobId) return null;
+
+        // Prefer the ReactFlow node data, which is kept in sync while editing
+        const jobNode = nodes.find((n) => n.id === activeJobId);
+        const jobNodeData = jobNode?.data as any | undefined;
+        const nodeName: string | null =
+            jobNodeData?.name ??
+            jobNodeData?.label ??
+            jobNodeData?.title ??
+            null;
+
+        if (nodeName) {
+            return nodeName;
+        }
+
+        // Fallback to pipeline data (e.g. immediately after initial load)
+        if (!activeStageId) return null;
         const stage = pipeline?.stages.find((s) => s.id === activeStageId);
         return stage?.jobs.find((j) => j.id === activeJobId)?.name ?? null;
-    }, [activeJobId, activeStageId, pipeline]);
+    }, [activeJobId, activeStageId, nodes, pipeline]);
 
     // Dynamic edge options: stageEdge → jobEdge → default (step level)
     const defaultEdgeOptions = useMemo(
