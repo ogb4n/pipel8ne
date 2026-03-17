@@ -17,6 +17,7 @@ export class GraphRepository implements IGraphRepository {
     source: string;
     target: string;
     type: string;
+    condition?: "on_success" | "always" | "on_failure";
     waypoint?: { x: number; y: number };
   }): Edge {
     return {
@@ -24,6 +25,7 @@ export class GraphRepository implements IGraphRepository {
       source: e.source,
       target: e.target,
       type: e.type,
+      ...(e.condition ? { condition: e.condition } : {}),
       ...(e.waypoint ? { waypoint: { x: e.waypoint.x, y: e.waypoint.y } } : {}),
     };
   }
@@ -90,6 +92,18 @@ export class GraphRepository implements IGraphRepository {
           id: j.id,
           name: j.name,
           runsOn: j.runsOn ?? "ubuntu-latest",
+          ...(j.condition
+            ? {
+                condition: {
+                  conditions: (j.condition.conditions ?? []).map((c) => ({
+                    leftOperand: c.leftOperand,
+                    operator: c.operator,
+                    ...(c.rightOperand !== undefined ? { rightOperand: c.rightOperand } : {}),
+                  })),
+                  logicalOperator: j.condition.logicalOperator,
+                },
+              }
+            : {}),
           steps: j.steps.map((n) => this.decryptNode(n)),
           stepEdges: j.stepEdges.map((e) => this.mapEdge(e)),
         })),
@@ -101,6 +115,18 @@ export class GraphRepository implements IGraphRepository {
   private encryptJob(job: Job): Job {
     return {
       ...job,
+      ...(job.condition
+        ? {
+            condition: {
+              conditions: job.condition.conditions.map((c) => ({
+                leftOperand: c.leftOperand,
+                operator: c.operator,
+                ...(c.rightOperand !== undefined ? { rightOperand: c.rightOperand } : {}),
+              })),
+              logicalOperator: job.condition.logicalOperator,
+            },
+          }
+        : {}),
       steps: job.steps.map((n) => this.encryptNode(n)),
     };
   }

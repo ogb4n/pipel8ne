@@ -19,6 +19,7 @@ import type { BuildNode } from "../nodes/BuildNode.js";
 import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
 import type { ConditionNode } from "../nodes/ConditionNode.js";
+import type { InvokableNode } from "../nodes/InvokableNode.js";
 
 export interface ExecutionStep {
   order: number;
@@ -228,5 +229,10 @@ export class ExecutionPlanVisitor implements INodeVisitor {
       node.data.label,
       `Branch on ${condCount} condition(s) [${p.logicalOperator ?? "AND"}] → true: [${(p.trueBranchNodeIds ?? []).join(", ")}] / false: [${(p.falseBranchNodeIds ?? []).join(", ") || "stop"}]`,
     );
+  }
+
+  visitInvokable(node: InvokableNode): void {
+    const p = node.invokableParams ?? { targetJobId: "?" };
+    this.addStep(node.id, node.type, node.data.label, `Invoke job: ${p.targetJobId}`);
   }
 }

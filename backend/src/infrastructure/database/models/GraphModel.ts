@@ -47,7 +47,25 @@ const EdgeSchema = new Schema(
     source: { type: String, required: true },
     target: { type: String, required: true },
     type: { type: String, required: true },
+    condition: { type: String, enum: ["on_success", "always", "on_failure"], required: false },
     waypoint: { type: WaypointSchema, default: undefined },
+  },
+  { _id: false },
+);
+
+const GuardConditionSchema = new Schema(
+  {
+    leftOperand: { type: String, required: true },
+    operator: { type: String, required: true },
+    rightOperand: { type: String, required: false },
+  },
+  { _id: false },
+);
+
+const JobConditionSchema = new Schema(
+  {
+    conditions: { type: [GuardConditionSchema], default: [] },
+    logicalOperator: { type: String, enum: ["AND", "OR"], default: "AND" },
   },
   { _id: false },
 );
@@ -69,6 +87,7 @@ const JobSchema = new Schema(
     id: { type: String, required: true },
     name: { type: String, required: true, default: "job" },
     runsOn: { type: String, required: true, default: "ubuntu-latest" },
+    condition: { type: JobConditionSchema, required: false },
     steps: { type: [NodeSchema], default: [] },
     stepEdges: { type: [EdgeSchema], default: [] },
   },
@@ -119,6 +138,7 @@ type EdgeDoc = {
   source: string;
   target: string;
   type: string;
+  condition?: "on_success" | "always" | "on_failure";
   waypoint?: { x: number; y: number };
 };
 
@@ -126,6 +146,14 @@ type JobDoc = {
   id: string;
   name: string;
   runsOn: string;
+  condition?: {
+    conditions: Array<{
+      leftOperand: string;
+      operator: string;
+      rightOperand?: string;
+    }>;
+    logicalOperator: "AND" | "OR";
+  };
   steps: NodeDoc[];
   stepEdges: EdgeDoc[];
 };

@@ -30,10 +30,18 @@ interface UpdatePipelineBody {
   stages: Array<{
     id: string;
     name: string;
-    runsOn: string;
     jobs: Array<{
       id: string;
       name: string;
+      runsOn: string;
+      condition?: {
+        conditions: Array<{
+          leftOperand: string;
+          operator: string;
+          rightOperand?: string;
+        }>;
+        logicalOperator: "AND" | "OR";
+      };
       steps: Array<{
         id: string;
         type: string;
@@ -52,6 +60,7 @@ interface UpdatePipelineBody {
         source: string;
         target: string;
         type: string;
+        condition?: "on_success" | "always" | "on_failure";
         waypoint?: { x: number; y: number };
       }>;
     }>;
@@ -62,6 +71,7 @@ interface UpdatePipelineBody {
     source: string;
     target: string;
     type: string;
+    condition?: "on_success" | "always" | "on_failure";
     waypoint?: { x: number; y: number };
   }>;
 }

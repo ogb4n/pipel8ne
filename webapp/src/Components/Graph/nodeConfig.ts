@@ -144,4 +144,13 @@ export const nodeConfig: Record<NodeType, NodeConfig> = {
       falseBranchNodeIds: [],
     },
   },
+
+  invokable: {
+    icon: "↳",
+    color: "#0f766e",
+    label: "Invokable Job",
+    description: "Invoque un autre job du meme pipeline",
+    getSummary: (p) => `target: ${(p.targetJobId as string) ?? "?"}`,
+    defaultParams: { targetJobId: "" },
+  },
 };

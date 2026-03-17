@@ -23,6 +23,7 @@ import type {
   GraphEdge,
   NodeType,
   NodeData,
+  JobConditionGuard,
   Viewport,
 } from "../Api/types";
 
@@ -121,6 +122,7 @@ function stageJobsToRFNodes(stage: Stage): RFNode[] {
     data: {
       name: job.name,
       runsOn: job.runsOn,
+      condition: job.condition,
       steps: job.steps,
       stepEdges: job.stepEdges,
     } as unknown as Record<string, unknown>,
@@ -128,7 +130,10 @@ function stageJobsToRFNodes(stage: Stage): RFNode[] {
 }
 
 /** RF stage-view nodes + edges → { jobs, jobEdges } for one stage */
-function rfJobNodesToJobs(rfNodes: RFNode[], rfEdges: RFEdge[]): { jobs: Job[]; jobEdges: GraphEdge[] } {
+function rfJobNodesToJobs(
+  rfNodes: RFNode[],
+  rfEdges: RFEdge[],
+): { jobs: Job[]; jobEdges: GraphEdge[] } {
   const jobIds = new Set(rfNodes.filter((n) => n.type === "jobCard").map((n) => n.id));
 
   const toBackendEdge = (e: RFEdge): GraphEdge => ({
@@ -149,6 +154,7 @@ function rfJobNodesToJobs(rfNodes: RFNode[], rfEdges: RFEdge[]): { jobs: Job[]; 
       const d = n.data as {
         name?: string;
         runsOn?: string;
+        condition?: JobConditionGuard;
         steps?: GraphNode[];
         stepEdges?: GraphEdge[];
       };
@@ -156,6 +162,7 @@ function rfJobNodesToJobs(rfNodes: RFNode[], rfEdges: RFEdge[]): { jobs: Job[]; 
         id: n.id,
         name: d.name ?? "job",
         runsOn: d.runsOn ?? "ubuntu-latest",
+        condition: d.condition,
         steps: d.steps ?? [],
         stepEdges: d.stepEdges ?? [],
         position: n.position,
@@ -399,9 +406,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       if (!prev) return prev;
       return {
         ...prev,
-        stages: prev.stages.map((s) =>
-          s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
-        ),
+        stages: prev.stages.map((s) => (s.id === activeStageId ? { ...s, jobs, jobEdges } : s)),
       };
     });
 
@@ -602,10 +607,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         if (!prev) return prev;
         return {
           ...prev,
-          stages: [
-            ...prev.stages,
-            { id, name: stageName, jobs: [], position: newPos },
-          ],
+          stages: [...prev.stages, { id, name: stageName, jobs: [], position: newPos }],
         };
       });
 
@@ -819,7 +821,13 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
   const updateJob = useCallback(
     (
       jobId: string,
-      patch: { name?: string; runsOn?: string; steps?: GraphNode[]; stepEdges?: GraphEdge[] },
+      patch: {
+        name?: string;
+        runsOn?: string;
+        condition?: JobConditionGuard;
+        steps?: GraphNode[];
+        stepEdges?: GraphEdge[];
+      },
     ) => {
       updateRFNodeData(jobId, patch);
     },

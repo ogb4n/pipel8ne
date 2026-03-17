@@ -17,6 +17,7 @@ import type { BuildNode } from "../nodes/BuildNode";
 import type { DeployNode } from "../nodes/DeployNode";
 import type { NotificationNode } from "../nodes/NotificationNode";
 import type { ConditionNode } from "../nodes/ConditionNode";
+import type { InvokableNode } from "../nodes/InvokableNode";
 
 export interface INodeVisitor {
   visitTrigger(node: TriggerNode): void;
@@ -28,4 +29,5 @@ export interface INodeVisitor {
   visitDeploy(node: DeployNode): void;
   visitNotification(node: NotificationNode): void;
   visitCondition(node: ConditionNode): void;
+  visitInvokable(node: InvokableNode): void;
 }

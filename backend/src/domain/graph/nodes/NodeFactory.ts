@@ -31,6 +31,8 @@ import { NotificationNode } from "./NotificationNode.js";
 import type { NotificationNodeParams } from "./NotificationNode.js";
 import { ConditionNode } from "./ConditionNode.js";
 import type { ConditionNodeParams } from "./ConditionNode.js";
+import { InvokableNode } from "./InvokableNode.js";
+import type { InvokableNodeParams } from "./InvokableNode.js";
 
 export class NodeFactory {
   /**
@@ -90,6 +92,15 @@ export class NodeFactory {
           positionY,
           data,
           raw as unknown as ConditionNodeParams,
+        );
+
+      case "invokable":
+        return new InvokableNode(
+          id,
+          positionX,
+          positionY,
+          data,
+          raw as unknown as InvokableNodeParams,
         );
 
       default:

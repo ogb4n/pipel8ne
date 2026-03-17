@@ -62,7 +62,7 @@ export class GraphService {
     const pipeline = await this.graphRepository.findById(pipelineId);
     if (!pipeline || pipeline.projectId !== projectId)
       throw new NotFoundError("Pipeline not found");
-    this.validateStages(data.stages);
+    this.validatePipeline(data.stages, data.stageEdges);
     return this.graphRepository.update(pipelineId, data);
   }
 
@@ -94,12 +94,12 @@ export class GraphService {
    * Validate all stages' jobs' steps using the Visitor pattern.
    * @throws {ValidationError} when any node has invalid configuration.
    */
-  private validateStages(stages: Stage[]): void {
+  private validatePipeline(stages: Stage[], stageEdges: Edge[]): void {
     const allNodes = stages.flatMap((s) => s.jobs.flatMap((j) => j.steps));
     const domainNodes = NodeFactory.fromDTOs(allNodes);
     const validator = new ValidationVisitor();
     for (const node of domainNodes) node.accept(validator);
-    validator.validateGraphConstraints();
+    validator.validatePipeline(stages, stageEdges);
     if (!validator.isValid()) {
       throw new ValidationError(validator.getErrors().join("; "));
     }

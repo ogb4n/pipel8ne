@@ -40,7 +40,8 @@ export type NodeType =
   | "build"
   | "deploy"
   | "notification"
-  | "condition";
+  | "condition"
+  | "invokable";
 
 // ── Typed params — mirror of backend Domain node params ─────────────────────
 export type TriggerType = "push" | "pull_request" | "schedule" | "manual" | "tag";
@@ -153,6 +154,8 @@ export type ConditionOperator =
   | "equals"
   | "not_equals"
   | "contains"
+  | "starts_with"
+  | "ends_with"
   | "greater_than"
   | "less_than"
   | "matches_regex"
@@ -170,6 +173,10 @@ export interface ConditionNodeParams {
   falseBranchNodeIds: string[];
 }
 
+export interface InvokableNodeParams {
+  targetJobId: string;
+}
+
 /** Union of all typed params, keyed by node type */
 export type NodeParamsByType = {
   trigger: TriggerNodeParams;
@@ -181,7 +188,13 @@ export type NodeParamsByType = {
   deploy: DeployNodeParams;
   notification: NotificationNodeParams;
   condition: ConditionNodeParams;
+  invokable: InvokableNodeParams;
 };
+
+export interface JobConditionGuard {
+  conditions: Condition[];
+  logicalOperator: "AND" | "OR";
+}
 
 export interface ApiKey {
   id: string;
@@ -234,6 +247,7 @@ export interface Job {
   id: string;
   name: string;
   runsOn: string;
+  condition?: JobConditionGuard;
   steps: GraphNode[];
   stepEdges: GraphEdge[];
   /** Canvas position in stage view */

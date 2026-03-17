@@ -21,4 +21,6 @@ export type {
 } from "./NotificationNode.js";
 export { ConditionNode } from "./ConditionNode.js";
 export type { ConditionNodeParams, Condition, ConditionOperator } from "./ConditionNode.js";
+export { InvokableNode } from "./InvokableNode.js";
+export type { InvokableNodeParams } from "./InvokableNode.js";
 export { NodeFactory } from "./NodeFactory.js";

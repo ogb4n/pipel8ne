@@ -48,7 +48,27 @@ const edgeSchema = {
     source: { type: "string" },
     target: { type: "string" },
     type: { type: "string" },
+    condition: { type: "string", enum: ["on_success", "always", "on_failure"] },
     waypoint: waypointSchema,
+  },
+} as const;
+
+const guardConditionSchema = {
+  type: "object",
+  required: ["leftOperand", "operator"],
+  properties: {
+    leftOperand: { type: "string" },
+    operator: { type: "string" },
+    rightOperand: { type: "string" },
+  },
+} as const;
+
+const jobConditionSchema = {
+  type: "object",
+  required: ["conditions", "logicalOperator"],
+  properties: {
+    conditions: { type: "array", items: guardConditionSchema },
+    logicalOperator: { type: "string", enum: ["AND", "OR"] },
   },
 } as const;
 
@@ -72,6 +92,7 @@ const jobSchema = {
     id: { type: "string" },
     name: { type: "string" },
     runsOn: { type: "string" },
+    condition: jobConditionSchema,
     steps: { type: "array", items: nodeSchema },
     stepEdges: { type: "array", items: edgeSchema },
   },
