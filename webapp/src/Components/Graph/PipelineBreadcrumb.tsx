@@ -9,6 +9,11 @@ interface PipelineBreadcrumbProps {
     onExitStage: () => void;
     /** Name of the active job — null when not in job canvas */
     jobName: string | null;
+    /**
+     * Whether the UI is currently showing the job canvas.
+     * Prefer passing this explicitly instead of inferring from `jobName`.
+     */
+    isJobCanvas?: boolean;
     onExitJob: () => void;
     onExitJobAndStage: () => void;
 }
@@ -61,10 +66,11 @@ const PipelineBreadcrumb: React.FC<PipelineBreadcrumbProps> = ({
     stageName,
     onExitStage,
     jobName,
+    isJobCanvas,
     onExitJob,
     onExitJobAndStage,
 }) => {
-    const inJobCanvas = jobName !== null;
+    const inJobCanvas = typeof isJobCanvas === "boolean" ? isJobCanvas : jobName !== null;
     const inStageCanvas = stageName !== null && !inJobCanvas;
 
     return (
