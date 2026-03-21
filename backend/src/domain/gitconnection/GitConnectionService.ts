@@ -1,7 +1,7 @@
 import { IGitConnectionRepository } from "./IGitConnectionRepository.js";
 import { IGitPlatformAdapter, GitRepository } from "./IGitPlatformAdapter.js";
 import { ISecretsService } from "../graph/ISecretsService.js";
-import { GitProvider, PublicGitConnection } from "./GitConnection.js";
+import { GitConnection, GitProvider, PublicGitConnection } from "./GitConnection.js";
 import { ForbiddenError, NotFoundError } from "../errors.js";
 
 export class GitConnectionService {
@@ -21,16 +21,7 @@ export class GitConnectionService {
     return adapter;
   }
 
-  private toPublic(conn: {
-    id: string;
-    userId: string;
-    provider: GitProvider;
-    providerUsername: string;
-    avatarUrl: string | null;
-    encryptedAccessToken: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }): PublicGitConnection {
+  private toPublic(conn: GitConnection): PublicGitConnection {
     const { encryptedAccessToken: _t, ...rest } = conn;
     return rest;
   }
@@ -97,16 +88,4 @@ export class GitConnectionService {
     return adapter.listRepositories(accessToken);
   }
 
-  /** Récupère les repos pour un provider donné (raccourci). */
-  async listRepositoriesByProvider(
-    userId: string,
-    provider: GitProvider,
-  ): Promise<GitRepository[]> {
-    const conn = await this.gitConnectionRepository.findByUserAndProvider(userId, provider);
-    if (!conn) throw new NotFoundError(`Aucune connexion ${provider} trouvée`);
-
-    const accessToken = this.secretsService.decrypt(conn.encryptedAccessToken);
-    const adapter = this.getAdapter(provider);
-    return adapter.listRepositories(accessToken);
-  }
 }
