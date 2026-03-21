@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IGitConnectionDocument extends Document {
   userId: string;
-  provider: "github" | "gitlab";
+  provider: "github" | "gitlab" | "azure_devops";
   providerUsername: string;
   avatarUrl: string | null;
   encryptedAccessToken: string;
@@ -13,7 +13,7 @@ export interface IGitConnectionDocument extends Document {
 const GitConnectionSchema = new Schema<IGitConnectionDocument>(
   {
     userId: { type: String, required: true, index: true },
-    provider: { type: String, required: true, enum: ["github", "gitlab"] },
+    provider: { type: String, required: true, enum: ["github", "gitlab", "azure_devops"] },
     providerUsername: { type: String, required: true },
     avatarUrl: { type: String, default: null },
     encryptedAccessToken: { type: String, required: true },

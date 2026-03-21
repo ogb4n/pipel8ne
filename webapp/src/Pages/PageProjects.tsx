@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../Api/client";
-import { Credential, Project, ProjectVisibility } from "../Api/types";
+
+import type { Credential, Project, ProjectVisibility, GitProvider } from "../Api/types";
 import { useAuth } from "../Context/AuthContext";
 import CreateCredentialModal from "../Components/CreateCredentialModal";
 import GitOnboardingModal from "../Components/GitOnboardingModal";
+import RepoList, { ProviderIcon, type RepoWithProvider } from "../Components/RepoList";
 
 const PROVIDER_LABELS: Record<string, string> = {
   github: "GitHub",
@@ -43,6 +45,7 @@ const PageProjects: React.FC = () => {
   const [newProvider, setNewProvider] = useState("github");
   const [newVisibility, setNewVisibility] = useState<ProjectVisibility>("private");
   const [creating, setCreating] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<RepoWithProvider | null>(null);
 
   // Dropdown + credential modal
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -53,6 +56,11 @@ const PageProjects: React.FC = () => {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [credLoading, setCredLoading] = useState(true);
   const [deletingCredId, setDeletingCredId] = useState<string | null>(null);
+
+  // Repos from git connections
+  const [repos, setRepos] = useState<RepoWithProvider[]>([]);
+  const [reposLoading, setReposLoading] = useState(true);
+  const [connectedProviders, setConnectedProviders] = useState<GitProvider[]>([]);
 
   const fetchCredentials = async () => {
     try {
@@ -91,9 +99,34 @@ const PageProjects: React.FC = () => {
     }
   };
 
+  const fetchRepos = async () => {
+    try {
+      setReposLoading(true);
+      const connections = await api.gitConnections.list();
+      const providers = [...new Set(connections.map((c) => c.provider))] as GitProvider[];
+      setConnectedProviders(providers);
+      const results = await Promise.all(
+        connections.map(async (conn) => {
+          try {
+            const list = await api.gitConnections.listRepos(conn.id);
+            return list.map((r) => ({ ...r, provider: conn.provider }));
+          } catch {
+            return [] as RepoWithProvider[];
+          }
+        }),
+      );
+      setRepos(results.flat());
+    } catch {
+      // pas d'erreur bloquante — on masque juste la section
+    } finally {
+      setReposLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchProjects();
     void fetchCredentials();
+    void fetchRepos();
   }, []);
 
   // Ferme le dropdown si clic en dehors
@@ -117,18 +150,43 @@ const PageProjects: React.FC = () => {
         path: newPath,
         provider: newProvider,
         visibility: newVisibility,
+        ...(selectedRepo
+          ? {
+              gitRepository: {
+                cloneUrl: selectedRepo.cloneUrl,
+                fullName: selectedRepo.fullName,
+                defaultBranch: selectedRepo.defaultBranch,
+                provider: selectedRepo.provider,
+              },
+            }
+          : {}),
       });
       setShowForm(false);
       setNewName("");
       setNewPath("");
       setNewProvider("github");
       setNewVisibility("private");
+      setSelectedRepo(null);
       await fetchProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de création");
     } finally {
       setCreating(false);
     }
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setSelectedRepo(null);
+  };
+
+  const openCreateFromRepo = (repo: RepoWithProvider) => {
+    setSelectedRepo(repo);
+    setNewName(repo.name);
+    setNewPath(repo.fullName);
+    setNewProvider(repo.provider);
+    setNewVisibility(repo.isPrivate ? "private" : "public");
+    setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -241,6 +299,16 @@ const PageProjects: React.FC = () => {
           </div>
         )}
 
+        {/* ── Section Dépôts Git ─────────────────────────────── */}
+        <RepoList
+          repos={repos}
+          loading={reposLoading}
+          connectedProviders={connectedProviders}
+          onSelectRepo={openCreateFromRepo}
+        />
+
+        {/* ── Section Projets ────────────────────────────────── */}
+
         {/* Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
@@ -256,7 +324,7 @@ const PageProjects: React.FC = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
                   className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
                 >
                   <svg
@@ -274,6 +342,19 @@ const PageProjects: React.FC = () => {
                   </svg>
                 </button>
               </div>
+
+              {/* Indicateur du repo lié */}
+              {selectedRepo && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-50 dark:bg-accent-950/20 border border-accent-200 dark:border-accent-800">
+                  <ProviderIcon provider={selectedRepo.provider} size={14} />
+                  <p className="text-xs font-medium text-accent-700 dark:text-accent-300 truncate">
+                    {selectedRepo.fullName}
+                  </p>
+                  <span className="text-[10px] text-accent-500 dark:text-accent-400 shrink-0">
+                    ({selectedRepo.defaultBranch})
+                  </span>
+                </div>
+              )}
 
               {(
                 [
@@ -325,7 +406,7 @@ const PageProjects: React.FC = () => {
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
                   className="flex-1 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm transition-colors"
                 >
                   Annuler
@@ -392,6 +473,19 @@ const PageProjects: React.FC = () => {
                     {p.visibility === "public" ? "public" : "privé"}
                   </span>
                 </div>
+
+                {/* Repo lié */}
+                {p.gitRepository && (
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <ProviderIcon provider={p.gitRepository.provider as GitProvider} size={12} />
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                      {p.gitRepository.fullName}
+                    </span>
+                    <span className="text-[10px] text-zinc-300 dark:text-zinc-700">
+                      ({p.gitRepository.defaultBranch})
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                   <Link

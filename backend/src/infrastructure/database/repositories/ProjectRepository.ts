@@ -1,5 +1,5 @@
 import { ProjectModel } from "../models/ProjectModel.js";
-import { Project, ProjectVisibility } from "../../../domain/project/Project.js";
+import { Project, ProjectVisibility, ProjectGitRepository } from "../../../domain/project/Project.js";
 import { IProjectRepository } from "../../../domain/project/IProjectRepository.js";
 
 /**
@@ -16,6 +16,16 @@ export class ProjectRepository implements IProjectRepository {
       visibility: doc.visibility as ProjectVisibility,
       ownerId: doc.ownerId,
       lastModified: doc.updatedAt,
+      ...(doc.gitRepository
+        ? {
+            gitRepository: {
+              cloneUrl: doc.gitRepository.cloneUrl,
+              fullName: doc.gitRepository.fullName,
+              defaultBranch: doc.gitRepository.defaultBranch,
+              provider: doc.gitRepository.provider,
+            },
+          }
+        : {}),
     };
   }
 
@@ -45,6 +55,7 @@ export class ProjectRepository implements IProjectRepository {
     provider: string;
     visibility: ProjectVisibility;
     ownerId: string;
+    gitRepository?: ProjectGitRepository;
   }): Promise<Project> {
     const doc = await ProjectModel.create(data);
     return this.toProject(doc);

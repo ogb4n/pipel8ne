@@ -117,7 +117,7 @@ export const SETTINGS_SECTIONS: {
   {
     id: "git",
     label: "Git",
-    description: "Connexions GitHub & GitLab",
+    description: "Connexions GitHub, GitLab & Azure DevOps",
     icon: (
       <svg
         width="15"
@@ -851,6 +851,15 @@ const PROVIDER_META: Record<GitProvider, { label: string; color: string; icon: R
       </svg>
     ),
   },
+  azure_devops: {
+    label: "Azure DevOps",
+    color: "bg-blue-600 text-white",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M15 3.622v8.512L11.5 15l-5.425-1.975v1.958L3.004 10.97l8.951.7V4.005L15 3.622zm-2.984.428L6.994 1v2.001L2.382 4.356 1 5.801v4.6l2.004.855V5.26l8.012-1.21z" />
+      </svg>
+    ),
+  },
 };
 
 function SectionGitConnections() {
@@ -899,7 +908,7 @@ function SectionGitConnections() {
       <div>
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Connexions Git</h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-          Connectez vos comptes GitHub et GitLab pour importer vos dépôts.
+          Connectez vos comptes GitHub, GitLab et Azure DevOps pour importer vos dépôts.
         </p>
       </div>
 

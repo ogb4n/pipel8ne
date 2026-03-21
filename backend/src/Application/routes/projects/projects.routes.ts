@@ -20,6 +20,12 @@ interface CreateProjectBody {
   path: string;
   provider: string;
   visibility?: "private" | "public";
+  gitRepository?: {
+    cloneUrl: string;
+    fullName: string;
+    defaultBranch: string;
+    provider: string;
+  };
 }
 
 interface UpdateProjectBody {
@@ -66,13 +72,14 @@ export default async function projectRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const ownerId = request.user.sub;
-      const { name, path, provider, visibility } = request.body;
+      const { name, path, provider, visibility, gitRepository } = request.body;
       const project = await app.projectService.create({
         name,
         path,
         provider,
         visibility: visibility ?? "private",
         ownerId,
+        ...(gitRepository ? { gitRepository } : {}),
       });
       return reply.status(201).send(project);
     },

@@ -69,6 +69,10 @@ export default fp(async function containerPlugin(app: FastifyInstance) {
     const { GitLabAdapter } = await import("../../infrastructure/git/GitLabAdapter.js");
     gitAdapters.push(new GitLabAdapter());
   }
+  if (process.env.AZURE_DEVOPS_CLIENT_ID && process.env.AZURE_DEVOPS_CLIENT_SECRET) {
+    const { AzureDevOpsAdapter } = await import("../../infrastructure/git/AzureDevOpsAdapter.js");
+    gitAdapters.push(new AzureDevOpsAdapter());
+  }
   const gitConnectionRepository = new GitConnectionRepository();
   const gitConnectionService = new GitConnectionService(
     gitConnectionRepository,

@@ -4,7 +4,7 @@
  * Le token d'accès est chiffré au repos — ne jamais l'exposer via l'API publique.
  */
 
-export type GitProvider = "github" | "gitlab";
+export type GitProvider = "github" | "gitlab" | "azure_devops";
 
 export interface GitConnection {
   id: string;

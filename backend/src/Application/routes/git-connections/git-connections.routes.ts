@@ -20,7 +20,7 @@ function handleDomainError(err: unknown, reply: FastifyReply) {
 }
 
 interface OAuthCallbackBody {
-  provider: "github" | "gitlab";
+  provider: "github" | "gitlab" | "azure_devops";
   code: string;
 }
 
@@ -29,7 +29,7 @@ interface ConnectionParams {
 }
 
 interface ReposByProviderParams {
-  provider: "github" | "gitlab";
+  provider: "github" | "gitlab" | "azure_devops";
 }
 
 export default async function gitConnectionRoutes(app: FastifyInstance) {
@@ -53,12 +53,14 @@ export default async function gitConnectionRoutes(app: FastifyInstance) {
     async (request) => {
       const githubClientId = process.env.GITHUB_CLIENT_ID;
       const gitlabClientId = process.env.GITLAB_CLIENT_ID;
+      const azureDevOpsClientId = process.env.AZURE_DEVOPS_CLIENT_ID;
       const gitlabBaseUrl = process.env.GITLAB_BASE_URL ?? "https://gitlab.com";
       const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
       const oauthCallbackUrl = `${frontendUrl}/oauth/callback`;
 
       const githubState = Buffer.from(JSON.stringify({ provider: "github" })).toString("base64");
       const gitlabState = Buffer.from(JSON.stringify({ provider: "gitlab" })).toString("base64");
+      const azureDevOpsState = Buffer.from(JSON.stringify({ provider: "azure_devops" })).toString("base64");
 
       return {
         github: {
@@ -71,6 +73,12 @@ export default async function gitConnectionRoutes(app: FastifyInstance) {
           enabled: !!gitlabClientId,
           authUrl: gitlabClientId
             ? `${gitlabBaseUrl}/oauth/authorize?client_id=${gitlabClientId}&redirect_uri=${encodeURIComponent(process.env.GITLAB_REDIRECT_URI ?? oauthCallbackUrl)}&response_type=code&scope=read_user+read_api+read_repository&state=${gitlabState}`
+            : "",
+        },
+        azure_devops: {
+          enabled: !!azureDevOpsClientId,
+          authUrl: azureDevOpsClientId
+            ? `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${azureDevOpsClientId}&response_type=Assertion&state=${azureDevOpsState}&scope=vso.code+vso.project+vso.profile&redirect_uri=${encodeURIComponent(process.env.AZURE_DEVOPS_REDIRECT_URI ?? oauthCallbackUrl)}`
             : "",
         },
       };
@@ -197,7 +205,7 @@ export default async function gitConnectionRoutes(app: FastifyInstance) {
         params: {
           type: "object",
           properties: {
-            provider: { type: "string", enum: ["github", "gitlab"] },
+            provider: { type: "string", enum: ["github", "gitlab", "azure_devops"] },
           },
         },
         response: { 200: gitRepositoryListSchema, 404: errorSchema },

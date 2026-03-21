@@ -4,7 +4,7 @@ export const gitConnectionSchema = {
   properties: {
     id: { type: "string" },
     userId: { type: "string" },
-    provider: { type: "string", enum: ["github", "gitlab"] },
+    provider: { type: "string", enum: ["github", "gitlab", "azure_devops"] },
     providerUsername: { type: "string" },
     avatarUrl: { type: ["string", "null"] },
     createdAt: { type: "string" },
@@ -24,7 +24,7 @@ export const oauthCallbackBodySchema = {
   properties: {
     provider: {
       type: "string",
-      enum: ["github", "gitlab"],
+      enum: ["github", "gitlab", "azure_devops"],
       description: "Plateforme Git cible",
     },
     code: {
@@ -48,6 +48,13 @@ export const oauthConfigSchema = {
       },
     },
     gitlab: {
+      type: "object",
+      properties: {
+        enabled: { type: "boolean" },
+        authUrl: { type: "string" },
+      },
+    },
+    azure_devops: {
       type: "object",
       properties: {
         enabled: { type: "boolean" },

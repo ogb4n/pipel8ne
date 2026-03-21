@@ -75,6 +75,14 @@ The frontend dev server starts at `http://localhost:5173` and proxies `/api/*` r
 | `DATABASE_URL`         | Yes      | MongoDB connection string                                |
 | `JWT_SECRET`           | Yes      | Secret used to sign JWTs. Use a long random string.      |
 | `SECRETS_ENCRYPTION_KEY` | Yes    | 32-byte hex key for AES-256-GCM credential encryption.   |
+| `FRONTEND_URL`         | No       | Frontend URL for OAuth redirects (default: `http://localhost:5173`) |
+| `GITHUB_CLIENT_ID`     | No       | GitHub OAuth App client ID (enables GitHub connection)   |
+| `GITHUB_CLIENT_SECRET`  | No      | GitHub OAuth App client secret                           |
+| `GITLAB_CLIENT_ID`     | No       | GitLab OAuth App client ID (enables GitLab connection)   |
+| `GITLAB_CLIENT_SECRET`  | No      | GitLab OAuth App client secret                           |
+| `GITLAB_BASE_URL`      | No       | GitLab instance URL (default: `https://gitlab.com`)      |
+| `AZURE_DEVOPS_CLIENT_ID` | No     | Azure DevOps OAuth App ID (enables Azure DevOps connection) |
+| `AZURE_DEVOPS_CLIENT_SECRET` | No | Azure DevOps OAuth App secret                            |
 | `NODE_ENV`             | No       | `development` enables Swagger UI and detailed logs.      |
 | `PORT`                 | No       | HTTP port (default: `3000`)                              |
 

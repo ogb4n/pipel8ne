@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../Api/client";
 import type { GitProvider } from "../Api/types";
 
-const VALID_PROVIDERS = new Set<string>(["github", "gitlab"]);
+const VALID_PROVIDERS = new Set<string>(["github", "gitlab", "azure_devops"]);
 
 export default function PageOAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -35,7 +35,7 @@ export default function PageOAuthCallback() {
 
     api.gitConnections
       .oauthCallback(provider as GitProvider, code)
-      .then(() => navigate("/settings/git", { replace: true }))
+      .then(() => navigate("/projects", { replace: true }))
       .catch((e: Error) => setError(e.message));
   }, [searchParams, navigate]);
 
