@@ -228,7 +228,5 @@ export const api = {
     delete: (id: string) => request<void>(`/api/git-connections/${id}`, { method: "DELETE" }),
     listRepos: (connectionId: string) =>
       request<GitRepository[]>(`/api/git-connections/${connectionId}/repos`),
-    listReposByProvider: (provider: GitProvider) =>
-      request<GitRepository[]>(`/api/git-connections/repos/${provider}`),
   },
 };

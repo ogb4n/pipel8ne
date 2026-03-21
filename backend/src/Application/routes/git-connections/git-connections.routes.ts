@@ -190,35 +190,4 @@ export default async function gitConnectionRoutes(app: FastifyInstance) {
     },
   );
 
-  /**
-   * GET /api/git-connections/repos/:provider
-   * Raccourci : récupère les repos pour un provider donné sans connaître l'ID de connexion.
-   */
-  app.get<{ Params: ReposByProviderParams }>(
-    "/api/git-connections/repos/:provider",
-    {
-      schema: {
-        tags: ["git-connections"],
-        summary: "Liste les repos pour un provider (GitHub ou GitLab)",
-        security: [{ bearerAuth: [] }],
-        params: {
-          type: "object",
-          properties: {
-            provider: { type: "string", enum: ["github", "gitlab", "azure_devops"] },
-          },
-        },
-        response: { 200: gitRepositoryListSchema, 404: errorSchema },
-      },
-    },
-    async (request, reply) => {
-      try {
-        return await app.gitConnectionService.listRepositoriesByProvider(
-          request.user.sub,
-          request.params.provider,
-        );
-      } catch (err: unknown) {
-        return handleDomainError(err, reply);
-      }
-    },
-  );
 }
