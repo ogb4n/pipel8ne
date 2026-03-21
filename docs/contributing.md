@@ -16,6 +16,7 @@ Always follow this order: **Domain → Infrastructure → Application**.
 ### 1. Domain — entity + port
 
 Create `backend/src/Domain/<feature>/`:
+
 - `Entity.ts` — TypeScript interface, `id` as `string`, dates as `Date`
 - `IEntityRepository.ts` — repository contract (port)
 - `errors.ts` or add to `Domain/errors.ts` if the feature has specific domain errors
@@ -23,6 +24,7 @@ Create `backend/src/Domain/<feature>/`:
 ### 2. Domain — service
 
 Create `backend/src/Domain/<feature>/EntityService.ts`:
+
 - Constructor receives repository and other dependencies as `private readonly`
 - Inject ports, never concrete implementations
 - Raise domain errors, never HTTP errors
@@ -30,6 +32,7 @@ Create `backend/src/Domain/<feature>/EntityService.ts`:
 ### 3. Infrastructure — Mongoose model
 
 Create `backend/src/Infrastructure/database/models/EntityModel.ts`:
+
 - Interface `IEntityDocument extends Document`
 - Mongoose schema
 - No business logic
@@ -37,6 +40,7 @@ Create `backend/src/Infrastructure/database/models/EntityModel.ts`:
 ### 4. Infrastructure — repository
 
 Create `backend/src/Infrastructure/database/repositories/EntityRepository.ts`:
+
 - `class EntityRepository implements IEntityRepository`
 - Private `toEntity(doc)` mapper: Mongoose → Domain type
 - MongoDB-specific code is confined here
@@ -44,6 +48,7 @@ Create `backend/src/Infrastructure/database/repositories/EntityRepository.ts`:
 ### 5. Application — DI wiring
 
 In `backend/src/Application/plugins/container.ts`:
+
 - Instantiate the repository and service
 - Add types to `declare module "fastify" { interface FastifyInstance { ... } }`
 - Expose via `app.decorate("entityService", ...)`
@@ -51,16 +56,19 @@ In `backend/src/Application/plugins/container.ts`:
 ### 6. Application — schemas
 
 Create `backend/src/Application/routes/<feature>/<feature>.schemas.ts`:
+
 - JSON Schema for bodies, params, querystrings, responses
 - Always use `additionalProperties: false` on request bodies
 
 ### 7. Application — routes
 
 Create `backend/src/Application/routes/<feature>/<feature>.routes.ts`:
+
 - `export default async function featureRoutes(app: FastifyInstance)`
 - Thin handlers: validate → call service → translate domain errors to HTTP status codes
 
 Register in `backend/src/Application/routes/index.ts`:
+
 ```typescript
 await app.register(featureRoutes);
 ```
@@ -95,13 +103,15 @@ Add the method to the relevant section in `webapp/src/Api/client.ts` and add the
 
 When making changes, update the relevant docs:
 
-| Changed area | Update |
-|---|---|
-| API endpoints (add/remove/modify) | `docs/api.md` |
-| Architecture or layer structure | `docs/architecture.md` |
-| Pipeline data model or node types | `docs/pipeline-concepts.md` |
-| Dev setup, env vars, Docker | `docs/development.md` + `README.md` |
-| Deployment or production config | `docs/deployment.md` |
+| Changed area                        | Update                              |
+| ----------------------------------- | ----------------------------------- |
+| API endpoints (add/remove/modify)   | `docs/api.md`                       |
+| Architecture or layer structure     | `docs/architecture.md`              |
+| Pipeline data model or node types   | `docs/pipeline-concepts.md`         |
+| Dev setup, env vars, Docker         | `docs/development.md` + `README.md` |
+| Deployment or production config     | `docs/deployment.md`                |
+| Conventions, naming, patterns       | `docs/conventions.md`               |
+| Project state, roadmap, route table | `docs/project-state.md`             |
 
 ---
 
@@ -109,11 +119,11 @@ When making changes, update the relevant docs:
 
 Use conventional commit prefixes:
 
-| Prefix | When |
-|---|---|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
+| Prefix      | When                                |
+| ----------- | ----------------------------------- |
+| `feat:`     | New feature                         |
+| `fix:`      | Bug fix                             |
 | `refactor:` | Code change with no behavior change |
-| `docs:` | Documentation only |
-| `chore:` | Tooling, deps, config |
-| `test:` | Tests |
+| `docs:`     | Documentation only                  |
+| `chore:`    | Tooling, deps, config               |
+| `test:`     | Tests                               |

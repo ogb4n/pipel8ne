@@ -1,20 +1,23 @@
 import fp from "fastify-plugin";
 import { FastifyInstance } from "fastify";
-import { UserRepository } from "../../Infrastructure/database/repositories/UserRepository";
-import { JwtTokenService } from "../../Infrastructure/JwtTokenService";
-import { UserService } from "../../Domain/user/UserService";
-import { AuthService } from "../../Domain/auth/AuthService";
-import { ProjectRepository } from "../../Infrastructure/database/repositories/ProjectRepository";
-import { GraphRepository } from "../../Infrastructure/database/repositories/GraphRepository";
-import { AesSecretsService } from "../../Infrastructure/SecretsService";
-import { ProjectService } from "../../Domain/project/ProjectService";
-import { GraphService } from "../../Domain/graph/GraphService";
-import { RefreshTokenRepository } from "../../Infrastructure/database/repositories/RefreshTokenRepository";
-import { CredentialRepository } from "../../Infrastructure/database/repositories/CredentialRepository";
-import { CredentialService } from "../../Domain/credential/CredentialService";
-import { ApiKeyRepository } from "../../Infrastructure/database/repositories/ApiKeyRepository";
-import { ApiKeyService } from "../../Domain/apikey/ApiKeyService";
-import { SystemSettingsService } from "../../Infrastructure/SystemSettingsService";
+import { UserRepository } from "../../infrastructure/database/repositories/UserRepository";
+import { JwtTokenService } from "../../infrastructure/JwtTokenService";
+import { UserService } from "../../domain/user/UserService";
+import { AuthService } from "../../domain/auth/AuthService";
+import { ProjectRepository } from "../../infrastructure/database/repositories/ProjectRepository";
+import { GraphRepository } from "../../infrastructure/database/repositories/GraphRepository";
+import { AesSecretsService } from "../../infrastructure/SecretsService";
+import { ProjectService } from "../../domain/project/ProjectService";
+import { GraphService } from "../../domain/graph/GraphService";
+import { RefreshTokenRepository } from "../../infrastructure/database/repositories/RefreshTokenRepository";
+import { CredentialRepository } from "../../infrastructure/database/repositories/CredentialRepository";
+import { CredentialService } from "../../domain/credential/CredentialService";
+import { ApiKeyRepository } from "../../infrastructure/database/repositories/ApiKeyRepository";
+import { ApiKeyService } from "../../domain/apikey/ApiKeyService";
+import { SystemSettingsService } from "../../infrastructure/SystemSettingsService";
+import { GitConnectionRepository } from "../../infrastructure/database/repositories/GitConnectionRepository";
+import { GitConnectionService } from "../../domain/gitconnection/GitConnectionService";
+import { IGitPlatformAdapter } from "../../domain/gitconnection/IGitPlatformAdapter";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -24,6 +27,7 @@ declare module "fastify" {
     graphService: GraphService;
     credentialService: CredentialService;
     apiKeyService: ApiKeyService;
+    gitConnectionService: GitConnectionService;
   }
 }
 
@@ -55,10 +59,28 @@ export default fp(async function containerPlugin(app: FastifyInstance) {
   const apiKeyRepository = new ApiKeyRepository();
   const apiKeyService = new ApiKeyService(apiKeyRepository);
 
+  // Git platform adapters — conditionally loaded based on env vars
+  const gitAdapters: IGitPlatformAdapter[] = [];
+  if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    const { GitHubAdapter } = await import("../../infrastructure/git/GitHubAdapter.js");
+    gitAdapters.push(new GitHubAdapter());
+  }
+  if (process.env.GITLAB_CLIENT_ID && process.env.GITLAB_CLIENT_SECRET) {
+    const { GitLabAdapter } = await import("../../infrastructure/git/GitLabAdapter.js");
+    gitAdapters.push(new GitLabAdapter());
+  }
+  const gitConnectionRepository = new GitConnectionRepository();
+  const gitConnectionService = new GitConnectionService(
+    gitConnectionRepository,
+    secretsService,
+    gitAdapters,
+  );
+
   app.decorate("userService", userService);
   app.decorate("authService", authService);
   app.decorate("projectService", projectService);
   app.decorate("graphService", graphService);
   app.decorate("credentialService", credentialService);
   app.decorate("apiKeyService", apiKeyService);
+  app.decorate("gitConnectionService", gitConnectionService);
 });

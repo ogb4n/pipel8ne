@@ -2,7 +2,7 @@
  * Routes Project — exposition CRUD de la ressource Project via l'API REST.
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError } from "../../../domain/errors.js";
 import {
   projectSchema,
   projectListSchema,
@@ -120,7 +120,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         return await app.projectService.getById(request.params.id);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -146,7 +146,7 @@ export default async function projectRoutes(app: FastifyInstance) {
           request.user.sub,
         );
         return project;
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -167,7 +167,7 @@ export default async function projectRoutes(app: FastifyInstance) {
       try {
         await app.projectService.delete(request.params.id, request.user.sub);
         return reply.status(204).send();
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },

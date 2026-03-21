@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { SystemSettingsService } from "../../../Infrastructure/SystemSettingsService.js";
+import { SystemSettingsService } from "../../../infrastructure/SystemSettingsService.js";
 
 const systemSettingsService = new SystemSettingsService();
 

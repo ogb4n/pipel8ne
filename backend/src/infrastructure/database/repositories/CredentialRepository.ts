@@ -1,5 +1,5 @@
-import { Credential } from "../../../Domain/credential/Credential.js";
-import { ICredentialRepository } from "../../../Domain/credential/ICredentialRepository.js";
+import { Credential } from "../../../domain/credential/Credential.js";
+import { ICredentialRepository } from "../../../domain/credential/ICredentialRepository.js";
 import { CredentialModel } from "../models/CredentialModel.js";
 
 export class CredentialRepository implements ICredentialRepository {
