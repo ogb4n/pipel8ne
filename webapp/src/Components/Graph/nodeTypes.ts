@@ -9,7 +9,6 @@ export const nodeTypes = {
   stageCard: StageCardNode,   // pipeline view: stage as a simple card
   jobCard: JobCardNode,        // stage view: job as a flat card
   // job canvas: step/task nodes
-  trigger: CicdNodeCard,
   shell_command: CicdNodeCard,
   docker: CicdNodeCard,
   git: CicdNodeCard,
@@ -17,5 +16,4 @@ export const nodeTypes = {
   build: CicdNodeCard,
   deploy: CicdNodeCard,
   notification: CicdNodeCard,
-  condition: CicdNodeCard,
 };

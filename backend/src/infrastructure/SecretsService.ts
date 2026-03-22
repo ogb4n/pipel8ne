@@ -7,7 +7,7 @@ const TAG_LENGTH = 16;
 
 /**
  * Implémentation AES-256-GCM du port ISecretsService.
- * La clé est lue depuis l'environnement au démarrage (fail-fast).
+ * La clé est lue depuis l'environnement au démarrage
  */
 export class AesSecretsService implements ISecretsService {
   private readonly key: Buffer;

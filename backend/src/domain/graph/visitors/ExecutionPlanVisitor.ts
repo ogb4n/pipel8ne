@@ -10,7 +10,6 @@
  *   const plan = visitor.getJobPlan();   // JobExecutionPlan
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
-import type { TriggerNode } from "../nodes/TriggerNode.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
 import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
@@ -18,7 +17,6 @@ import type { TestNode } from "../nodes/TestNode.js";
 import type { BuildNode } from "../nodes/BuildNode.js";
 import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
-import type { ConditionNode } from "../nodes/ConditionNode.js";
 
 export interface ExecutionStep {
   order: number;
@@ -75,31 +73,6 @@ export class ExecutionPlanVisitor implements INodeVisitor {
   }
 
   // ── visit methods ────────────────────────────────────────────────────────────
-
-  visitTrigger(node: TriggerNode): void {
-    const p = node.triggerParams ?? {};
-    let detail: string;
-    switch (p.triggerType) {
-      case "push":
-        detail = `on push to: ${(p.branches ?? ["*"]).join(", ")}`;
-        break;
-      case "pull_request":
-        detail = `on pull request targeting: ${(p.branches ?? ["*"]).join(", ")}`;
-        break;
-      case "schedule":
-        detail = `on schedule: ${p.schedule ?? "?"}`;
-        break;
-      case "tag":
-        detail = `on tag matching: ${(p.tags ?? ["*"]).join(", ")}`;
-        break;
-      case "manual":
-        detail = "manual trigger";
-        break;
-      default:
-        detail = "unknown trigger";
-    }
-    this.addStep(node.id, node.type, node.data.label, `Pipeline starts — ${detail}`);
-  }
 
   visitShellCommand(node: ShellCommandNode): void {
     const p = node.shellParams ?? {};
@@ -219,14 +192,4 @@ export class ExecutionPlanVisitor implements INodeVisitor {
     );
   }
 
-  visitCondition(node: ConditionNode): void {
-    const p = node.conditionParams ?? {};
-    const condCount = p.conditions?.length ?? 0;
-    this.addStep(
-      node.id,
-      node.type,
-      node.data.label,
-      `Branch on ${condCount} condition(s) [${p.logicalOperator ?? "AND"}] → true: [${(p.trueBranchNodeIds ?? []).join(", ")}] / false: [${(p.falseBranchNodeIds ?? []).join(", ") || "stop"}]`,
-    );
-  }
 }

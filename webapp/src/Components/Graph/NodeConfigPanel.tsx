@@ -5,7 +5,6 @@ import type {
     NodeData,
     NodeType,
     NodeParams,
-    TriggerType,
     Shell,
     DockerAction,
     GitAction,
@@ -15,7 +14,6 @@ import type {
     RolloutStrategy,
     NotificationChannel,
     NotificationTrigger,
-    ConditionOperator,
 } from "../../Api/types";
 
 // ── Shared field components ──────────────────────────────────────────────────
@@ -124,49 +122,6 @@ const TagsInput: React.FC<{
 // ── Type-specific param forms ────────────────────────────────────────────────
 
 type PP = Record<string, unknown>;
-
-const TriggerForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => (
-    <FieldGroup>
-        <div>
-            <Label>Type de déclencheur</Label>
-            <Select value={(p.triggerType as string) ?? "push"} onChange={(e) => set("triggerType", e.target.value)}>
-                {(["push", "pull_request", "tag", "schedule", "manual"] as TriggerType[]).map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                ))}
-            </Select>
-        </div>
-        {(p.triggerType === "push" || p.triggerType === "pull_request") && (
-            <div>
-                <Label>Branches</Label>
-                <TagsInput
-                    value={(p.branches as string[]) ?? []}
-                    onChange={(v) => set("branches", v)}
-                    placeholder="main… Entrée pour ajouter"
-                />
-            </div>
-        )}
-        {p.triggerType === "tag" && (
-            <div>
-                <Label>Patterns de tags</Label>
-                <TagsInput
-                    value={(p.tags as string[]) ?? []}
-                    onChange={(v) => set("tags", v)}
-                    placeholder="v*… Entrée pour ajouter"
-                />
-            </div>
-        )}
-        {p.triggerType === "schedule" && (
-            <div>
-                <Label>Expression cron</Label>
-                <Input
-                    value={(p.schedule as string) ?? ""}
-                    onChange={(e) => set("schedule", e.target.value)}
-                    placeholder="0 2 * * *"
-                />
-            </div>
-        )}
-    </FieldGroup>
-);
 
 const ShellForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => (
     <FieldGroup>
@@ -480,81 +435,10 @@ const NotificationForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }
     </FieldGroup>
 );
 
-const CONDITION_OPERATORS: ConditionOperator[] = [
-    "equals", "not_equals", "contains", "greater_than", "less_than", "matches_regex", "is_empty", "is_not_empty",
-];
-
-interface ConditionRow {
-    leftOperand: string;
-    operator: ConditionOperator;
-    rightOperand?: string;
-}
-
-const ConditionForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => {
-    const conditions: ConditionRow[] = (p.conditions as ConditionRow[]) ?? [];
-    const noRight = (op: ConditionOperator) => op === "is_empty" || op === "is_not_empty";
-
-    const updateRow = (idx: number, patch: Partial<ConditionRow>) => {
-        const updated = conditions.map((c, i) => (i === idx ? { ...c, ...patch } : c));
-        set("conditions", updated);
-    };
-
-    return (
-        <FieldGroup>
-            <div>
-                <Label>Opérateur logique</Label>
-                <Select value={(p.logicalOperator as string) ?? "AND"} onChange={(e) => set("logicalOperator", e.target.value)}>
-                    <option value="AND">AND</option>
-                    <option value="OR">OR</option>
-                </Select>
-            </div>
-            <SectionTitle>Conditions</SectionTitle>
-            {conditions.map((cond, idx) => (
-                <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-500">#{idx + 1}</span>
-                        <button
-                            type="button"
-                            onClick={() => set("conditions", conditions.filter((_, i) => i !== idx))}
-                            className="text-red-400 hover:text-red-600 text-xs"
-                        >
-                            Supprimer
-                        </button>
-                    </div>
-                    <div>
-                        <Label>Opérande gauche</Label>
-                        <Input value={cond.leftOperand} onChange={(e) => updateRow(idx, { leftOperand: e.target.value })} placeholder="${{ env.BRANCH }}" />
-                    </div>
-                    <div>
-                        <Label>Opérateur</Label>
-                        <Select value={cond.operator} onChange={(e) => updateRow(idx, { operator: e.target.value as ConditionOperator })}>
-                            {CONDITION_OPERATORS.map((op) => <option key={op} value={op}>{op}</option>)}
-                        </Select>
-                    </div>
-                    {!noRight(cond.operator) && (
-                        <div>
-                            <Label>Opérande droit</Label>
-                            <Input value={cond.rightOperand ?? ""} onChange={(e) => updateRow(idx, { rightOperand: e.target.value })} />
-                        </div>
-                    )}
-                </div>
-            ))}
-            <button
-                type="button"
-                onClick={() => set("conditions", [...conditions, { leftOperand: "", operator: "equals", rightOperand: "" }])}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline text-left"
-            >
-                + Ajouter une condition
-            </button>
-        </FieldGroup>
-    );
-};
-
 // ── Dispatch to the right form ───────────────────────────────────────────────
 
 const ParamsForm: React.FC<{ type: NodeType; p: PP; set: (k: string, v: unknown) => void }> = ({ type, p, set }) => {
     switch (type) {
-        case "trigger": return <TriggerForm p={p} set={set} />;
         case "shell_command": return <ShellForm p={p} set={set} />;
         case "docker": return <DockerForm p={p} set={set} />;
         case "git": return <GitForm p={p} set={set} />;
@@ -562,7 +446,6 @@ const ParamsForm: React.FC<{ type: NodeType; p: PP; set: (k: string, v: unknown)
         case "build": return <BuildForm p={p} set={set} />;
         case "deploy": return <DeployForm p={p} set={set} />;
         case "notification": return <NotificationForm p={p} set={set} />;
-        case "condition": return <ConditionForm p={p} set={set} />;
     }
 };
 

@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(xargs -I {} basename {})"
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -E '\\\\.\\(yml|yaml|json|toml|md\\)$')",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(grep -r \"condition\\\\|Condition\" C:UsersvirgilDocumentsDevRepospipel8ne/docs --include=*.md)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -r \"trueBranch\\\\|falseBranch\\\\|visitCondition\" /c/Users/virgil/Documents/Dev/Repos/pipel8ne --include=*.ts --include=*.tsx)",
+      "Bash(grep -r condition /c/Users/virgil/Documents/Dev/Repos/pipel8ne/webapp/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r condition /c/Users/virgil/Documents/Dev/Repos/pipel8ne/backend/src --include=*.ts)",
+      "Bash(npm run:*)",
+      "Bash(netstat -aon)"
     ]
   }
 }

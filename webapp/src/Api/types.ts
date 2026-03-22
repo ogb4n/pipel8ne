@@ -32,15 +32,13 @@ export interface Project {
 }
 // ── Node type discriminator ─────────────────────────────────────────────────
 export type NodeType =
-  | "trigger"
   | "shell_command"
   | "docker"
   | "git"
   | "test"
   | "build"
   | "deploy"
-  | "notification"
-  | "condition";
+  | "notification";
 
 // ── Typed params — mirror of backend Domain node params ─────────────────────
 export type TriggerType = "push" | "pull_request" | "schedule" | "manual" | "tag";
@@ -149,30 +147,8 @@ export interface NotificationNodeParams {
   recipient?: string;
 }
 
-export type ConditionOperator =
-  | "equals"
-  | "not_equals"
-  | "contains"
-  | "greater_than"
-  | "less_than"
-  | "matches_regex"
-  | "is_empty"
-  | "is_not_empty";
-export interface Condition {
-  leftOperand: string;
-  operator: ConditionOperator;
-  rightOperand?: string;
-}
-export interface ConditionNodeParams {
-  conditions: Condition[];
-  logicalOperator: "AND" | "OR";
-  trueBranchNodeIds: string[];
-  falseBranchNodeIds: string[];
-}
-
 /** Union of all typed params, keyed by node type */
 export type NodeParamsByType = {
-  trigger: TriggerNodeParams;
   shell_command: ShellCommandNodeParams;
   docker: DockerNodeParams;
   git: GitNodeParams;
@@ -180,7 +156,6 @@ export type NodeParamsByType = {
   build: BuildNodeParams;
   deploy: DeployNodeParams;
   notification: NotificationNodeParams;
-  condition: ConditionNodeParams;
 };
 
 export interface ApiKey {
@@ -222,8 +197,6 @@ export interface GraphEdge {
   type: string;
   /** Optional reroute waypoint stored as flow coordinates */
   waypoint?: { x: number; y: number };
-  /** Execution condition for stage→stage edges */
-  condition?: "on_success" | "always" | "on_failure";
 }
 export interface Viewport {
   x: number;
@@ -234,8 +207,8 @@ export interface Job {
   id: string;
   name: string;
   runsOn: string;
+  /** Steps executed in array order */
   steps: GraphNode[];
-  stepEdges: GraphEdge[];
   /** Canvas position in stage view */
   position?: { x: number; y: number };
 }
@@ -253,6 +226,10 @@ export interface Graph {
   id: string;
   projectId: string;
   name: string;
+  /** draft = work in progress, no validation enforced. active = fully validated. */
+  status: "draft" | "active";
+  /** Pipeline-level trigger configuration */
+  trigger?: TriggerNodeParams;
   viewport: Viewport;
   /** Stages composing the pipeline. */
   stages: Stage[];
