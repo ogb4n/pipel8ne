@@ -1,6 +1,6 @@
 import { UserModel } from "../models/UserModel.js";
-import { User } from "../../../Domain/user/User.js";
-import { IUserRepository } from "../../../Domain/user/IUserRepository.js";
+import { User } from "../../../domain/user/User.js";
+import { IUserRepository } from "../../../domain/user/IUserRepository.js";
 
 /**
  * Implémentation Mongoose du port IUserRepository.

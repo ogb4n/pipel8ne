@@ -1,5 +1,5 @@
 import { IProjectRepository } from "./IProjectRepository.js";
-import { Project, ProjectVisibility } from "./Project.js";
+import { Project, ProjectVisibility, ProjectGitRepository } from "./Project.js";
 import { NotFoundError, ForbiddenError } from "../errors.js";
 
 export class ProjectService {
@@ -29,6 +29,7 @@ export class ProjectService {
     provider: string;
     visibility: ProjectVisibility;
     ownerId: string;
+    gitRepository?: ProjectGitRepository;
   }): Promise<Project> {
     return this.projectRepository.create(data);
   }

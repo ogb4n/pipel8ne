@@ -25,7 +25,7 @@ export default fp(async function jwtPlugin(app: FastifyInstance) {
   app.decorate("authenticate", async function (request: FastifyRequest, reply: FastifyReply) {
     try {
       await request.jwtVerify();
-    } catch (err) {
+    } catch (err: unknown) {
       reply.status(401).send({ message: "Non autorisé" });
     }
   });

@@ -91,7 +91,7 @@ export class NodeFactory {
     for (const dto of dtos) {
       try {
         nodes.push(NodeFactory.fromDTO(dto));
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn(`[NodeFactory] Skipping node "${dto.id}": ${(err as Error).message}`);
       }
     }

@@ -1,5 +1,5 @@
 import { SystemSettingsModel } from "./database/models/SystemSettingsModel.js";
-import { ISystemSettingsService } from "../Domain/settings/ISystemSettingsService.js";
+import { ISystemSettingsService } from "../domain/settings/ISystemSettingsService.js";
 
 export type SystemSettings = {
   registrationEnabled: boolean;

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { AuthError } from "../../../Domain/auth/AuthService.js";
-import { RegistrationDisabledError } from "../../../Domain/errors.js";
-import { SystemSettingsService } from "../../../Infrastructure/SystemSettingsService.js";
+import { AuthError } from "../../../domain/auth/AuthService.js";
+import { RegistrationDisabledError } from "../../../domain/errors.js";
+import { SystemSettingsService } from "../../../infrastructure/SystemSettingsService.js";
 import {
   registerBodySchema,
   loginBodySchema,
@@ -51,7 +51,7 @@ export default async function authRoutes(app: FastifyInstance) {
       try {
         const result = await app.authService.register(request.body);
         return reply.status(201).send(result);
-      } catch (err) {
+      } catch (err: unknown) {
         if (err instanceof RegistrationDisabledError) {
           return reply.status(403).send({ message: err.message });
         }
@@ -78,7 +78,7 @@ export default async function authRoutes(app: FastifyInstance) {
       try {
         const result = await app.authService.login(request.body.email, request.body.password);
         return reply.status(200).send(result);
-      } catch (err) {
+      } catch (err: unknown) {
         if (err instanceof AuthError && err.code === "INVALID_CREDENTIALS") {
           return reply.status(401).send({ message: err.message });
         }

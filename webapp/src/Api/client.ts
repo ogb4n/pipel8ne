@@ -11,6 +11,10 @@ import type {
   ApiKey,
   CreateApiKeyResponse,
   User,
+  GitConnection,
+  GitRepository,
+  OAuthConfig,
+  GitProvider,
 } from "./types";
 
 const BASE = "";
@@ -139,6 +143,12 @@ export const api = {
       path: string;
       provider: string;
       visibility?: ProjectVisibility;
+      gitRepository?: {
+        cloneUrl: string;
+        fullName: string;
+        defaultBranch: string;
+        provider: string;
+      };
     }) => request<Project>("/api/projects", { method: "POST", body: JSON.stringify(data) }),
     update: (
       id: string,
@@ -206,5 +216,17 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+  },
+  gitConnections: {
+    oauthConfig: () => request<OAuthConfig>("/api/git-connections/oauth/config"),
+    oauthCallback: (provider: GitProvider, code: string) =>
+      request<GitConnection>("/api/git-connections/oauth/callback", {
+        method: "POST",
+        body: JSON.stringify({ provider, code }),
+      }),
+    list: () => request<GitConnection[]>("/api/git-connections"),
+    delete: (id: string) => request<void>(`/api/git-connections/${id}`, { method: "DELETE" }),
+    listRepos: (connectionId: string) =>
+      request<GitRepository[]>(`/api/git-connections/${connectionId}/repos`),
   },
 };

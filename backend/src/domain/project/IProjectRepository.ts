@@ -1,4 +1,4 @@
-import { Project, ProjectVisibility } from "./Project.js";
+import { Project, ProjectVisibility, ProjectGitRepository } from "./Project.js";
 
 export interface IProjectRepository {
   findAll(): Promise<Project[]>;
@@ -11,6 +11,7 @@ export interface IProjectRepository {
     provider: string;
     visibility: ProjectVisibility;
     ownerId: string;
+    gitRepository?: ProjectGitRepository;
   }): Promise<Project>;
   updateById(
     id: string,

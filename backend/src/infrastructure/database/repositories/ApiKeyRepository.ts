@@ -1,5 +1,5 @@
-import { ApiKey } from "../../../Domain/apikey/ApiKey.js";
-import { IApiKeyRepository } from "../../../Domain/apikey/IApiKeyRepository.js";
+import { ApiKey } from "../../../domain/apikey/ApiKey.js";
+import { IApiKeyRepository } from "../../../domain/apikey/IApiKeyRepository.js";
 import { ApiKeyModel } from "../models/ApiKeyModel.js";
 
 export class ApiKeyRepository implements IApiKeyRepository {

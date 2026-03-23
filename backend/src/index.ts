@@ -1,7 +1,7 @@
 import "dotenv/config";
 import Fastify from "fastify";
-import { connectDatabase, disconnectDatabase } from "./Infrastructure/database/client";
-import { UserModel } from "./Infrastructure/database/models/UserModel.js";
+import { connectDatabase, disconnectDatabase } from "./infrastructure/database/client";
+import { UserModel } from "./infrastructure/database/models/UserModel.js";
 import swaggerPlugin from "./Application/plugins/swagger";
 import staticPlugin from "./Application/plugins/static";
 import jwtPlugin from "./Application/plugins/jwt";
@@ -54,7 +54,7 @@ const start = async () => {
     if (isDev) {
       app.log.info("Swagger UI disponible sur http://localhost:3000/docs");
     }
-  } catch (err) {
+  } catch (err: unknown) {
     app.log.error(err);
     await disconnectDatabase();
     process.exit(1);

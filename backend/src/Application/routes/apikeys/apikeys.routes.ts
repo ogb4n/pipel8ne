@@ -4,7 +4,7 @@
  * Le keyHash n'est jamais exposé dans les réponses.
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError } from "../../../domain/errors.js";
 import {
   apiKeySchema,
   apiKeyListSchema,
@@ -86,7 +86,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
         const deleted = await app.apiKeyService.deleteApiKey(request.params.id, request.user.sub);
         if (!deleted) return reply.status(404).send({ message: "Clé API introuvable" });
         return reply.status(204).send();
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -109,7 +109,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
         const key = await app.apiKeyService.revokeApiKey(request.params.id, request.user.sub);
         if (!key) return reply.status(404).send({ message: "Clé API introuvable" });
         return reply.status(200).send(key);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },

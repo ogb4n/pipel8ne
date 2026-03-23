@@ -130,6 +130,8 @@ The frontend dev server starts at `http://localhost:5173` and proxies API reques
 
 ## Documentation
 
+- [Conventions & pratiques](docs/conventions.md) — naming, architecture rules, coding patterns, security
+- [Project state](docs/project-state.md) — what's built, what's planned, current data model, all routes
 - [Architecture](docs/architecture.md) — backend hexagonal architecture, frontend structure, data flow
 - [Pipeline concepts](docs/pipeline-concepts.md) — stages, jobs, steps, node types, YAML export
 - [API reference](docs/api.md) — all REST endpoints

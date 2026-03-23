@@ -1,6 +1,6 @@
-import { ITokenService } from "../Domain/auth/ITokenService.js";
+import { ITokenService } from "../domain/auth/ITokenService.js";
 import { IJwtSigner } from "./IJwtSigner.js";
-import { REFRESH_TOKEN_TTL } from "../Domain/auth/auth.constants.js";
+import { REFRESH_TOKEN_TTL } from "../domain/auth/auth.constants.js";
 
 /**
  * Implémentation de ITokenService via @fastify/jwt.
