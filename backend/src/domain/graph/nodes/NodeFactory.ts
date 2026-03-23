@@ -13,8 +13,6 @@
  */
 import type { Node } from "../Node.js";
 import { BaseNode } from "./BaseNode.js";
-import { TriggerNode } from "./TriggerNode.js";
-import type { TriggerNodeParams } from "./TriggerNode.js";
 import { ShellCommandNode } from "./ShellCommandNode.js";
 import type { ShellCommandNodeParams } from "./ShellCommandNode.js";
 import { DockerNode } from "./DockerNode.js";
@@ -29,8 +27,6 @@ import { DeployNode } from "./DeployNode.js";
 import type { DeployNodeParams } from "./DeployNode.js";
 import { NotificationNode } from "./NotificationNode.js";
 import type { NotificationNodeParams } from "./NotificationNode.js";
-import { ConditionNode } from "./ConditionNode.js";
-import type { ConditionNodeParams } from "./ConditionNode.js";
 
 export class NodeFactory {
   /**
@@ -47,9 +43,6 @@ export class NodeFactory {
     const raw = data.params.baseParameters;
 
     switch (dto.type) {
-      case "trigger":
-        return new TriggerNode(id, positionX, positionY, data, raw as unknown as TriggerNodeParams);
-
       case "shell_command":
         return new ShellCommandNode(
           id,
@@ -81,15 +74,6 @@ export class NodeFactory {
           positionY,
           data,
           raw as unknown as NotificationNodeParams,
-        );
-
-      case "condition":
-        return new ConditionNode(
-          id,
-          positionX,
-          positionY,
-          data,
-          raw as unknown as ConditionNodeParams,
         );
 
       default:

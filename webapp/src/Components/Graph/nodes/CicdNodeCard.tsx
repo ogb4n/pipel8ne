@@ -7,7 +7,7 @@ import type { NodeType, NodeData } from "../../../Api/types";
 /** Node types that can be added as a next step (no trigger in the middle) */
 const ADDABLE_TYPES: NodeType[] = [
     "shell_command", "docker", "git", "test",
-    "build", "deploy", "notification", "condition",
+    "build", "deploy", "notification",
 ];
 
 // ── Hover toolbar button ─────────────────────────────────────────────────────
@@ -98,8 +98,7 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
         leaveTimer.current = setTimeout(() => setHovered(false), 150);
     };
 
-    // condition nodes have two branches — skip the "+" invite
-    const hasOutgoing = type === "condition" || getEdges().some((e) => e.source === id);
+    const hasOutgoing = getEdges().some((e) => e.source === id);
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -164,14 +163,12 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
 
             {/* ── Card ── */}
             <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-52 text-xs overflow-hidden">
-                {type !== "trigger" && (
-                    <Handle
+                <Handle
                         type="target"
                         position={Position.Left}
                         style={{ background: cfg.color }}
                         className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
                     />
-                )}
 
                 {/* Header */}
                 <div
@@ -194,29 +191,14 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
                         {cfg.getSummary(params)}
                     </span>
 
-                    {type === "condition" && (
-                        <div className="flex flex-col gap-0.5 mt-1">
-                            <span className="text-green-500 font-medium">✔ true →</span>
-                            <span className="text-red-500 font-medium">✘ false ↓</span>
-                        </div>
-                    )}
                 </div>
 
-                {type === "condition" ? (
-                    <>
-                        <Handle id="true" type="source" position={Position.Right}
-                            className="w-3! h-3! border-2! border-white! dark:border-zinc-900! bg-green-500!" />
-                        <Handle id="false" type="source" position={Position.Bottom}
-                            className="w-3! h-3! border-2! border-white! dark:border-zinc-900! bg-red-500!" />
-                    </>
-                ) : (
-                    <Handle
-                        type="source"
-                        position={Position.Right}
-                        style={{ background: cfg.color }}
-                        className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
-                    />
-                )}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    style={{ background: cfg.color }}
+                    className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
+                />
             </div>
 
             {/* ── "+" add next node ── */}

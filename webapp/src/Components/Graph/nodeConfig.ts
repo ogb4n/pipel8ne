@@ -17,21 +17,6 @@ export interface NodeConfig {
 }
 
 export const nodeConfig: Record<NodeType, NodeConfig> = {
-  trigger: {
-    icon: "⚡",
-    color: "#7c3aed",
-    label: "Trigger",
-    description: "Démarre le pipeline (push, PR, schedule…)",
-    getSummary: (p) => {
-      const type = (p.triggerType as string) ?? "?";
-      if (type === "schedule") return `schedule: ${p.schedule ?? "cron ?"}`;
-      if (type === "manual") return "manual";
-      const branches = ((p.branches as string[]) ?? []).join(", ") || "*";
-      return `${type} → ${branches}`;
-    },
-    defaultParams: { triggerType: "push", branches: ["main"] },
-  },
-
   shell_command: {
     icon: "$_",
     color: "#52525b",
@@ -128,20 +113,4 @@ export const nodeConfig: Record<NodeType, NodeConfig> = {
     defaultParams: { channel: "slack", notifyOn: "on_failure", message: "Pipeline {{status}}" },
   },
 
-  condition: {
-    icon: "⑂",
-    color: "#d97706",
-    label: "Condition",
-    description: "Branche selon une condition runtime",
-    getSummary: (p) => {
-      const count = ((p.conditions as unknown[]) ?? []).length;
-      return `${count} condition${count !== 1 ? "s" : ""} [${p.logicalOperator ?? "AND"}]`;
-    },
-    defaultParams: {
-      conditions: [{ leftOperand: "", operator: "equals", rightOperand: "" }],
-      logicalOperator: "AND",
-      trueBranchNodeIds: [],
-      falseBranchNodeIds: [],
-    },
-  },
 };

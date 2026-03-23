@@ -21,9 +21,8 @@ import PipelineBreadcrumb from "../Components/Graph/PipelineBreadcrumb";
 
 const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
 
-/** Node types that open a config panel when selected (step-level nodes, not stage/job cards) */
 const CONFIG_PANEL_NODE_TYPES = new Set([
-    "trigger", "shell_command", "docker", "git", "test", "build", "deploy", "notification", "condition",
+    "shell_command", "docker", "git", "test", "build", "deploy", "notification",
 ]);
 
 interface PageGraphCanvasProps {
@@ -35,7 +34,8 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     const navigate = useNavigate();
 
     const {
-        pipeline, nodes, edges, status, error, savedOk,
+        pipeline, pipelineStatus, setPipelineStatus,
+        nodes, edges, status, error, savedOk,
         selectedNodeId, activeStageId, activeJobId,
         onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
         addJob, addStage, addStepNode, save, exportToYaml, deletePipeline,
@@ -53,41 +53,27 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
         azure: "Azure DevOps",
     };
 
-    // Only show NodeConfigPanel for step-type nodes (not stage/job cards)
     const selectedNode = nodes.find(
         (n) => n.id === selectedNodeId && CONFIG_PANEL_NODE_TYPES.has(n.type ?? ""),
     ) ?? null;
 
-    // Active stage name for breadcrumb
     const activeStageName = useMemo(
         () => (activeStageId ? (pipeline?.stages.find((s) => s.id === activeStageId)?.name ?? null) : null),
         [activeStageId, pipeline],
     );
 
-    // Active job name for breadcrumb
     const activeJobName = useMemo(() => {
         if (!activeJobId) return null;
-
-        // Prefer the ReactFlow node data, which is kept in sync while editing
         const jobNode = nodes.find((n) => n.id === activeJobId);
         const jobNodeData = jobNode?.data as any | undefined;
         const nodeName: string | null =
-            jobNodeData?.name ??
-            jobNodeData?.label ??
-            jobNodeData?.title ??
-            null;
-
-        if (nodeName) {
-            return nodeName;
-        }
-
-        // Fallback to pipeline data (e.g. immediately after initial load)
+            jobNodeData?.name ?? jobNodeData?.label ?? jobNodeData?.title ?? null;
+        if (nodeName) return nodeName;
         if (!activeStageId) return null;
         const stage = pipeline?.stages.find((s) => s.id === activeStageId);
         return stage?.jobs.find((j) => j.id === activeJobId)?.name ?? null;
     }, [activeJobId, activeStageId, nodes, pipeline]);
 
-    // Dynamic edge options: stageEdge → jobEdge → default (step level)
     const defaultEdgeOptions = useMemo(
         () => ({ type: activeJobId ? "default" : activeStageId ? "jobEdge" : "stageEdge" }),
         [activeStageId, activeJobId],
@@ -99,8 +85,10 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
         void navigate(`/projects/${projectId}/pipelines`);
     };
 
+    const isPipelineView = !activeStageId && !activeJobId;
+
     if (status === "loading") return (
-        <div className="flex items-center gap-2 justify-center h-[calc(100vh-3rem)] text-zinc-400 dark:text-zinc-500 text-sm">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", height: "calc(100vh - 3rem)", color: "rgba(120,115,150,0.7)", fontSize: 13 }}>
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
@@ -121,8 +109,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     return (
         <div className="flex flex-col" style={{ height: "calc(100vh - 3rem)" }}>
             {/* Toolbar */}
-            <div className="flex items-center gap-2 px-4 py-0 h-11 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-                {/* Breadcrumb */}
+            <div className="flex items-center gap-2 px-4 py-0 h-11 shrink-0" style={{ background: "#111116", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 <PipelineBreadcrumb
                     projectId={projectId ?? ""}
                     pipelineName={pipeline?.name ?? "Pipeline"}
@@ -136,17 +123,77 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                 <div className="ml-auto flex items-center gap-2">
                     {error && <span className="text-xs text-red-500">{error}</span>}
                     {savedOk && (
-                        <span className="text-xs text-emerald-500 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <span style={{ fontSize: 11, color: "rgba(52,211,153,0.8)", display: "flex", alignItems: "center", gap: 5 }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M20 6 9 17l-5-5" />
                             </svg>
                             Sauvegardé
                         </span>
                     )}
+                    {/* Draft / Active toggle */}
+                    <button
+                        onClick={() => setPipelineStatus(pipelineStatus === "draft" ? "active" : "draft")}
+                        title={pipelineStatus === "draft" ? "Passer en Actif" : "Repasser en Brouillon"}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            border: pipelineStatus === "draft"
+                                ? "1px solid rgba(245,158,11,0.3)"
+                                : "1px solid rgba(52,211,153,0.3)",
+                            background: pipelineStatus === "draft"
+                                ? "rgba(245,158,11,0.08)"
+                                : "rgba(52,211,153,0.08)",
+                            color: pipelineStatus === "draft"
+                                ? "rgba(251,191,36,0.85)"
+                                : "rgba(52,211,153,0.85)",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            letterSpacing: "0.04em",
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                            textTransform: "uppercase",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = "0.75";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = "1";
+                        }}
+                    >
+                        <span style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: pipelineStatus === "draft" ? "rgba(251,191,36,0.8)" : "rgba(52,211,153,0.8)",
+                            flexShrink: 0,
+                        }} />
+                        {pipelineStatus === "draft" ? "Brouillon" : "Actif"}
+                    </button>
                     <button
                         onClick={() => { void handleDelete(); }}
                         disabled={status === "deleting"}
-                        className="px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-900/50 disabled:opacity-50 text-xs font-medium transition-colors"
+                        style={{
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            border: "1px solid rgba(239,68,68,0.2)",
+                            color: "rgba(248,113,113,0.8)",
+                            background: "transparent",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                            e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)";
+                        }}
                     >
                         {status === "deleting" ? "Suppression..." : "Supprimer"}
                     </button>
@@ -155,13 +202,29 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                         {exportDropdownOpen && (
                             <div className="fixed inset-0 z-10" onClick={() => setExportDropdownOpen(false)} />
                         )}
-                        <div className="flex items-stretch">
+                        <div style={{ display: "flex", alignItems: "stretch" }}>
                             <button
                                 onClick={() => exportToYaml(exportFormat)}
                                 title="Exporter en YAML"
-                                className="px-3 py-1.5 rounded-l-md border border-r-0 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs font-medium transition-colors flex items-center gap-1.5"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "5px 10px",
+                                    borderRadius: "6px 0 0 6px",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    borderRight: "none",
+                                    color: "rgba(200,200,220,0.75)",
+                                    background: "rgba(255,255,255,0.04)",
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                     <polyline points="7 10 12 15 17 10" />
                                     <line x1="12" y1="15" x2="12" y2="3" />
@@ -170,7 +233,19 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                             </button>
                             <button
                                 onClick={() => setExportDropdownOpen((o) => !o)}
-                                className="px-1.5 py-1.5 rounded-r-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "5px 7px",
+                                    borderRadius: "0 6px 6px 0",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    color: "rgba(180,180,200,0.6)",
+                                    background: "rgba(255,255,255,0.04)",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="m6 9 6 6 6-6" />
@@ -178,13 +253,37 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                             </button>
                         </div>
                         {exportDropdownOpen && (
-                            <ul className="absolute right-0 z-20 mt-1 w-36 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg text-xs">
+                            <ul style={{
+                                position: "absolute",
+                                right: 0,
+                                zIndex: 20,
+                                marginTop: 4,
+                                width: 144,
+                                borderRadius: 8,
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "#1c1c26",
+                                boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                                overflow: "hidden",
+                                padding: "3px 0",
+                            }}>
                                 {(["github", "gitlab", "azure"] as const).map((fmt) => (
-                                    <li key={fmt}>
+                                    <li key={fmt} style={{ listStyle: "none" }}>
                                         <button
                                             onClick={() => { setExportFormat(fmt); setExportDropdownOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${exportFormat === fmt ? "text-accent-500 font-medium" : "text-zinc-600 dark:text-zinc-300"
-                                                }`}
+                                            style={{
+                                                width: "100%",
+                                                textAlign: "left",
+                                                padding: "7px 12px",
+                                                fontSize: 12,
+                                                color: exportFormat === fmt ? "#a78bfa" : "rgba(200,200,220,0.7)",
+                                                fontWeight: exportFormat === fmt ? 600 : 400,
+                                                background: "transparent",
+                                                border: "none",
+                                                cursor: "pointer",
+                                                transition: "background 0.1s",
+                                            }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                                         >
                                             {formatLabels[fmt]}
                                         </button>
@@ -196,7 +295,26 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                     <button
                         onClick={() => { void save(); }}
                         disabled={status === "saving"}
-                        className="px-3 py-1.5 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+                        style={{
+                            padding: "5px 12px",
+                            borderRadius: 6,
+                            border: "1px solid rgba(124,58,237,0.4)",
+                            background: "rgba(124,58,237,0.18)",
+                            color: "#c4b5fd",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                            opacity: status === "saving" ? 0.6 : 1,
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(124,58,237,0.28)";
+                            e.currentTarget.style.borderColor = "rgba(139,92,246,0.6)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(124,58,237,0.18)";
+                            e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)";
+                        }}
                     >
                         {status === "saving" ? "Sauvegarde..." : "Sauvegarder"}
                     </button>
@@ -205,52 +323,120 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
             {/* Canvas */}
             <div className="flex-1 relative">
-                {/* Floating toolbar — context-aware */}
-                <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10 }} className="flex flex-col gap-2">
-                    {activeJobId ? (
-                        /* Job canvas: add first task (trigger) */
-                        <button
-                            onClick={() => addStepNode("shell_command")}
-                            title="Ajouter une task dans ce job"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-zinc-500/40 text-zinc-400 hover:bg-zinc-500/10 hover:border-zinc-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <path d="M12 8v8M8 12h8" />
-                            </svg>
-                            + Task
-                        </button>
-                    ) : !activeStageId ? (
-                        /* Pipeline view: only add stage */
+                {/* Fixed bottom add button — context-aware, same pattern for all 3 levels */}
+                <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 10 }}>
+                    {isPipelineView && (
                         <button
                             onClick={() => addStage()}
-                            title="Ajouter une nouvelle stage"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 7,
+                                padding: "8px 16px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(124,58,237,0.3)",
+                                background: "rgba(15,12,26,0.9)",
+                                color: "rgba(167,139,250,0.9)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                letterSpacing: "0.02em",
+                                cursor: "pointer",
+                                backdropFilter: "blur(12px)",
+                                transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(30,18,54,0.95)";
+                                e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)";
+                                e.currentTarget.style.color = "#c4b5fd";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(15,12,26,0.9)";
+                                e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)";
+                                e.currentTarget.style.color = "rgba(167,139,250,0.9)";
+                            }}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <path d="M12 8v8M8 12h8" />
+                                <path d="M12 5v14M5 12h14" />
                             </svg>
-                            + Stage
+                            Add Stage
                         </button>
-                    ) : (
-                        /* Stage view: only add job */
+                    )}
+                    {activeStageId && !activeJobId && (
                         <button
                             onClick={() => addJob()}
-                            title="Ajouter un job dans cette stage"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-400/60 text-xs font-medium transition-colors shadow-md bg-zinc-900"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 7,
+                                padding: "8px 16px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(79,70,229,0.3)",
+                                background: "rgba(12,12,26,0.9)",
+                                color: "rgba(129,140,248,0.9)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                letterSpacing: "0.02em",
+                                cursor: "pointer",
+                                backdropFilter: "blur(12px)",
+                                transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(20,18,48,0.95)";
+                                e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)";
+                                e.currentTarget.style.color = "#a5b4fc";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(12,12,26,0.9)";
+                                e.currentTarget.style.borderColor = "rgba(79,70,229,0.3)";
+                                e.currentTarget.style.color = "rgba(129,140,248,0.9)";
+                            }}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <path d="M12 8v8M8 12h8" />
+                                <path d="M12 5v14M5 12h14" />
                             </svg>
-                            + Job
+                            Add Job
+                        </button>
+                    )}
+                    {activeJobId && (
+                        <button
+                            onClick={() => addStepNode("shell_command")}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 7,
+                                padding: "8px 16px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                background: "rgba(12,12,18,0.9)",
+                                color: "rgba(200,200,220,0.8)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                letterSpacing: "0.02em",
+                                cursor: "pointer",
+                                backdropFilter: "blur(12px)",
+                                transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(24,24,36,0.95)";
+                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
+                                e.currentTarget.style.color = "rgba(230,230,245,0.9)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(12,12,18,0.9)";
+                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                                e.currentTarget.style.color = "rgba(200,200,220,0.8)";
+                            }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                            </svg>
+                            Add Task
                         </button>
                     )}
                 </div>
 
                 <GraphActionsContext.Provider
-                    value={{ selectNode, enterStage, exitStage, openJobDrawer, enterJob, exitJob }}
+                    value={{ selectNode, enterStage, exitStage, openJobDrawer, enterJob, exitJob, addStage, addJob }}
                 >
                     <ReactFlow
                         nodes={nodes}
@@ -261,45 +447,50 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
-                        onNodeClick={(_: React.MouseEvent, node: RFNode) => {
-                            selectNode(node.id);
-                        }}
+                        onNodeClick={(_: React.MouseEvent, node: RFNode) => selectNode(node.id)}
                         onPaneClick={() => selectNode(null)}
                         onMoveEnd={(_: unknown, vp: RFViewport) => setViewport(vp)}
                         onNodeDragStart={onNodeDragStart}
                         onNodeDrag={onNodeDrag}
                         onNodeDragStop={onNodeDragStop}
                         colorMode="dark"
-                        style={{ "--xy-background-color": "#171717" } as React.CSSProperties}
+                        style={{ "--xy-background-color": "#0f0f12" } as React.CSSProperties}
                     >
                         <Background
                             variant={BackgroundVariant.Dots}
-                            bgColor="#171717"
-                            color="#494949"
-                            gap={18}
-                            size={1.2}
+                            bgColor="#0f0f12"
+                            color="#1e1e28"
+                            gap={22}
+                            size={1.3}
                         />
-                        <Controls />
+                        <Controls
+                            style={{
+                                background: "#1c1c26",
+                                border: "1px solid rgba(255,255,255,0.07)",
+                                borderRadius: 8,
+                                boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                            }}
+                        />
                         <MiniMap
                             nodeColor={(node) => {
-                                if (node.type === "stageCard" || node.type === "stageGroup") return "rgba(139,92,246,0.6)";
-                                if (node.type === "jobCard" || node.type === "jobGroup") return "rgba(99,102,241,0.6)";
-                                if (node.type === "trigger") return "#7c3aed";
-                                if (node.type === "shell_command") return "#52525b";
-                                if (node.type === "docker") return "#2563eb";
-                                if (node.type === "git") return "#ea580c";
-                                if (node.type === "test") return "#16a34a";
-                                if (node.type === "build") return "#ca8a04";
-                                if (node.type === "deploy") return "#4f46e5";
-                                if (node.type === "notification") return "#db2777";
-                                if (node.type === "condition") return "#d97706";
-                                return "#52525b";
+                                if (node.type === "stageCard" || node.type === "stageGroup") return "rgba(124,58,237,0.7)";
+                                if (node.type === "jobCard" || node.type === "jobGroup") return "rgba(79,70,229,0.7)";
+
+                                if (node.type === "shell_command") return "#3f3f50";
+                                if (node.type === "docker") return "#1d4ed8";
+                                if (node.type === "git") return "#c2410c";
+                                if (node.type === "test") return "#15803d";
+                                if (node.type === "build") return "#a16207";
+                                if (node.type === "deploy") return "#4338ca";
+                                if (node.type === "notification") return "#be185d";
+                                return "#3f3f50";
                             }}
-                            maskColor="rgba(0,0,0,0.6)"
+                            maskColor="rgba(0,0,0,0.65)"
                             style={{
-                                background: "rgba(15,10,30,0.8)",
-                                border: "1px solid rgba(139,92,246,0.2)",
+                                background: "#14141c",
+                                border: "1px solid rgba(255,255,255,0.06)",
                                 borderRadius: 8,
+                                boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
                             }}
                         />
                     </ReactFlow>
@@ -312,7 +503,6 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                         />
                     )}
                 </GraphActionsContext.Provider>
-
             </div>
         </div>
     );

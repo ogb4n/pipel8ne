@@ -15,18 +15,33 @@ Pipeline (Graph)
 
 Top-level entity. Belongs to a project.
 
-| Field        | Type       | Description                                 |
+| Field        | Type              | Description                                 |
 |---|---|---|
-| `id`         | string     | Unique identifier                           |
-| `projectId`  | string     | Parent project                              |
-| `name`       | string     | Display name                                |
-| `stages`     | Stage[]    | Ordered list of stages                      |
-| `stageEdges` | GraphEdge[]| Dependency edges between stages             |
-| `viewport`   | Viewport   | Last saved canvas position/zoom             |
+| `id`         | string            | Unique identifier                           |
+| `projectId`  | string            | Parent project                              |
+| `name`       | string            | Display name                                |
+| `status`     | `draft` \| `active` | Pipeline status                           |
+| `trigger`    | TriggerNodeParams | Pipeline-level trigger configuration (optional in draft) |
+| `stages`     | Stage[]           | Ordered list of stages                      |
+| `stageEdges` | GraphEdge[]       | Dependency edges between stages             |
+| `viewport`   | Viewport          | Last saved canvas position/zoom             |
+
+#### Trigger
+
+The trigger defines when the pipeline runs. It is configured at the pipeline level (not as a step).
+
+| Field         | Type       | Description                                          |
+|---|---|---|
+| `triggerType` | TriggerType | `push`, `pull_request`, `schedule`, `manual`, `tag` |
+| `branches`    | string[]   | Branch patterns (for push/pull_request triggers)     |
+| `schedule`    | string     | Cron expression (for schedule triggers)              |
+| `tags`        | string[]   | Tag patterns (for tag triggers)                      |
+
+A trigger is required when activating a pipeline (`status: "active"`). Draft pipelines may omit it.
 
 ### Stage
 
-A stage groups parallel jobs. Stages are connected by edges that define execution order and conditions.
+A stage groups parallel jobs. Stages are connected by edges that define execution order.
 
 | Field       | Type       | Description                                        |
 |---|---|---|
@@ -36,10 +51,7 @@ A stage groups parallel jobs. Stages are connected by edges that define executio
 | `jobEdges`  | GraphEdge[]| Dependencies between jobs within the stage         |
 | `position`  | `{x, y}`   | Canvas position                                    |
 
-**Stage edges** support an execution condition:
-- `on_success` (default) — run the next stage only if the current one succeeded
-- `on_failure` — run the next stage only if the current one failed
-- `always` — always run the next stage regardless of result
+**Stage edges** define execution order only — there are no execution conditions between stages.
 
 ### Job
 
@@ -50,8 +62,7 @@ A job runs on a specific runner. It contains an ordered sequence of steps.
 | `id`         | string      |                                      |
 | `name`       | string      |                                      |
 | `runsOn`     | string      | Runner label (e.g. `ubuntu-latest`)  |
-| `steps`      | GraphNode[] | Steps executed in this job           |
-| `stepEdges`  | GraphEdge[] | Dependency edges between steps       |
+| `steps`      | GraphNode[] | Steps executed in array order        |
 | `position`   | `{x, y}`    | Canvas position in stage view        |
 
 ### Step (GraphNode)
@@ -72,7 +83,6 @@ The smallest unit of work. Each step has a type that determines its configuratio
 
 | Type            | Description                                               |
 |---|---|
-| `trigger`       | Pipeline trigger (push, pull_request, schedule, manual, tag) |
 | `shell_command` | Run a shell script (bash, sh, zsh, powershell, cmd)       |
 | `docker`        | Docker operations (build, run, push, pull, compose)       |
 | `git`           | Git operations (clone, checkout, pull, fetch, tag, push)  |
@@ -80,7 +90,6 @@ The smallest unit of work. Each step has a type that determines its configuratio
 | `build`         | Build artifacts (npm, yarn, maven, gradle, cargo, go…)    |
 | `deploy`        | Deploy to a target (kubernetes, aws_ecs, aws_lambda, ssh…)|
 | `notification`  | Send a notification (slack, teams, email, discord…)       |
-| `condition`     | Branch execution based on a condition                     |
 
 Each step type has its own typed params, validated both in the frontend config panel and by the backend.
 
@@ -101,7 +110,7 @@ Going back uses the breadcrumb at the top of the editor. At each level, the canv
 
 ## YAML export
 
-A pipeline can be exported as a CI/CD configuration file. The export performs a topological sort of stages based on their dependency edges, then generates a format-specific structure.
+A pipeline can be exported as a CI/CD configuration file. The export performs a topological sort of stages based on their dependency edges, then generates a format-specific structure. The pipeline-level trigger is used to populate the CI provider's trigger/on configuration.
 
 | Format           | Output file              |
 |---|---|

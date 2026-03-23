@@ -16,7 +16,7 @@ import {
     arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { GraphNode, GraphEdge, NodeType } from '../../Api/types';
+import type { GraphNode, NodeType } from '../../Api/types';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,18 +25,16 @@ interface StepDrawerProps {
     jobName: string;
     runsOn: string;
     steps: GraphNode[];
-    stepEdges: GraphEdge[];
     onClose: () => void;
     onUpdateJob: (
         jobId: string,
-        patch: { name?: string; runsOn?: string; steps?: GraphNode[]; stepEdges?: GraphEdge[] },
+        patch: { name?: string; runsOn?: string; steps?: GraphNode[] },
     ) => void;
 }
 
 // ── Badge color map ──────────────────────────────────────────────────────────
 
 const TYPE_BADGE: Record<NodeType, { bg: string; text: string; label: string }> = {
-    trigger: { bg: 'bg-amber-500/20', text: 'text-amber-300', label: 'trigger' },
     shell_command: { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'shell' },
     docker: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', label: 'docker' },
     git: { bg: 'bg-orange-500/20', text: 'text-orange-300', label: 'git' },
@@ -44,7 +42,6 @@ const TYPE_BADGE: Record<NodeType, { bg: string; text: string; label: string }> 
     build: { bg: 'bg-violet-500/20', text: 'text-violet-300', label: 'build' },
     deploy: { bg: 'bg-red-500/20', text: 'text-red-300', label: 'deploy' },
     notification: { bg: 'bg-pink-500/20', text: 'text-pink-300', label: 'notify' },
-    condition: { bg: 'bg-yellow-500/20', text: 'text-yellow-300', label: 'cond' },
 };
 
 // ── SortableStepItem ─────────────────────────────────────────────────────────
@@ -231,7 +228,6 @@ const SortableStepItem: React.FC<SortableStepItemProps> = ({ step, onUpdate, onD
 // ── AddStepSelector ──────────────────────────────────────────────────────────
 
 const STEP_TYPES: NodeType[] = [
-    'trigger',
     'shell_command',
     'docker',
     'git',
@@ -239,7 +235,6 @@ const STEP_TYPES: NodeType[] = [
     'build',
     'deploy',
     'notification',
-    'condition',
 ];
 
 interface AddStepSelectorProps {
@@ -309,7 +304,6 @@ const StepDrawer: React.FC<StepDrawerProps> = ({
     jobName,
     runsOn,
     steps,
-    stepEdges,
     onClose,
     onUpdateJob,
 }) => {
@@ -352,12 +346,8 @@ const StepDrawer: React.FC<StepDrawerProps> = ({
     };
 
     const handleDeleteStep = (index: number) => {
-        const removedId = steps[index].id;
         const newSteps = steps.filter((_, i) => i !== index);
-        const newStepEdges = stepEdges.filter(
-            (e) => e.source !== removedId && e.target !== removedId,
-        );
-        onUpdateJob(jobId, { steps: newSteps, stepEdges: newStepEdges });
+        onUpdateJob(jobId, { steps: newSteps });
     };
 
     const handleAddStep = (type: NodeType) => {

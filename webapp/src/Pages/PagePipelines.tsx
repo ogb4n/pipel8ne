@@ -161,7 +161,29 @@ const PagePipelines: React.FC = () => {
                             className="flex items-center justify-between px-4 py-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
                         >
                             <div className="min-w-0">
-                                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{p.name}</h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{p.name}</h3>
+                                    <span style={{
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        letterSpacing: "0.04em",
+                                        textTransform: "uppercase",
+                                        padding: "1px 6px",
+                                        borderRadius: 4,
+                                        border: p.status === "draft"
+                                            ? "1px solid rgba(245,158,11,0.35)"
+                                            : "1px solid rgba(52,211,153,0.35)",
+                                        color: p.status === "draft"
+                                            ? "rgba(251,191,36,0.85)"
+                                            : "rgba(52,211,153,0.85)",
+                                        background: p.status === "draft"
+                                            ? "rgba(245,158,11,0.08)"
+                                            : "rgba(52,211,153,0.08)",
+                                        flexShrink: 0,
+                                    }}>
+                                        {p.status === "draft" ? "Brouillon" : "Actif"}
+                                    </span>
+                                </div>
                                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
                                     {p.stages.length} stage{p.stages.length !== 1 ? "s" : ""}
                                     <span className="mx-1 opacity-50">·</span>

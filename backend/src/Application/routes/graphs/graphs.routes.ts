@@ -26,6 +26,8 @@ interface CreatePipelineBody {
 }
 
 interface UpdatePipelineBody {
+  status: "draft" | "active";
+  trigger?: { triggerType: string; branches?: string[]; schedule?: string; tags?: string[] };
   viewport: { x: number; y: number; zoom: number };
   stages: Array<{
     id: string;
@@ -46,13 +48,6 @@ interface UpdatePipelineBody {
           env: Record<string, unknown>;
           secrets: Record<string, string>;
         };
-      }>;
-      stepEdges: Array<{
-        id: string;
-        source: string;
-        target: string;
-        type: string;
-        waypoint?: { x: number; y: number };
       }>;
     }>;
     position: { x: number; y: number };
@@ -161,11 +156,11 @@ export default async function pipelineRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { viewport, stages, stageEdges } = request.body;
+        const { status, trigger, viewport, stages, stageEdges } = request.body;
         return await app.graphService.update(
           request.params.pipelineId,
           request.params.projectId,
-          { viewport, stages, stageEdges },
+          { status, trigger, viewport, stages, stageEdges },
           request.user.sub,
         );
       } catch (err) {

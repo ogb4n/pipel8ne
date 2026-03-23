@@ -67,13 +67,12 @@ const positionSchema = {
  */
 const jobSchema = {
   type: "object",
-  required: ["id", "name", "runsOn", "steps", "stepEdges"],
+  required: ["id", "name", "runsOn", "steps"],
   properties: {
     id: { type: "string" },
     name: { type: "string" },
     runsOn: { type: "string" },
     steps: { type: "array", items: nodeSchema },
-    stepEdges: { type: "array", items: edgeSchema },
   },
 } as const;
 
@@ -102,12 +101,24 @@ const viewportSchema = {
   },
 } as const;
 
+const triggerSchema = {
+  type: "object",
+  properties: {
+    triggerType: { type: "string", enum: ["push", "pull_request", "schedule", "manual", "tag"] },
+    branches: { type: "array", items: { type: "string" } },
+    schedule: { type: "string" },
+    tags: { type: "array", items: { type: "string" } },
+  },
+} as const;
+
 export const pipelineSchema = {
   type: "object",
   properties: {
     id: { type: "string" },
     projectId: { type: "string" },
     name: { type: "string" },
+    status: { type: "string", enum: ["draft", "active"] },
+    trigger: triggerSchema,
     viewport: viewportSchema,
     stages: { type: "array", items: stageSchema },
     stageEdges: { type: "array", items: edgeSchema },
@@ -125,8 +136,10 @@ export const createPipelineBodySchema = {
 
 export const updatePipelineBodySchema = {
   type: "object",
-  required: ["viewport", "stages", "stageEdges"],
+  required: ["status", "viewport", "stages", "stageEdges"],
   properties: {
+    status: { type: "string", enum: ["draft", "active"] },
+    trigger: triggerSchema,
     viewport: viewportSchema,
     stages: { type: "array", items: stageSchema },
     stageEdges: { type: "array", items: edgeSchema },

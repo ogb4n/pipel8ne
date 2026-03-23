@@ -1,6 +1,46 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* ── React Flow canvas overrides ─────────────────────────────────────────── */
+.react-flow__controls-button {
+    background: #1c1c26 !important;
+    border-color: rgba(255,255,255,0.07) !important;
+    border-bottom-color: rgba(255,255,255,0.07) !important;
+    color: rgba(180,175,220,0.7) !important;
+    fill: rgba(180,175,220,0.7) !important;
+    width: 26px !important;
+    height: 26px !important;
+}
+.react-flow__controls-button:hover {
+    background: rgba(124,58,237,0.15) !important;
+    color: #c4b5fd !important;
+    fill: #c4b5fd !important;
+}
+.react-flow__controls-button svg {
+    fill: currentColor !important;
+}
+
+.react-flow__handle {
+    transition: transform 0.12s, opacity 0.12s, background 0.12s !important;
+}
+
+/* Job handles glow on hover to signal they're interactive */
+.react-flow__node-jobCard .react-flow__handle:hover {
+    transform: scale(1.5) !important;
+    background: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.25) !important;
+}
+
+/* Edge selection highlight */
+.react-flow__edge.selected path {
+    stroke: rgba(139,92,246,0.8) !important;
+}
+
+/* Minimap node */
+.react-flow__minimap-node {
+    rx: 3;
+}
+
 @layer base {
     html {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;

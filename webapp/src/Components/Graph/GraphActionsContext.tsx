@@ -6,6 +6,9 @@ interface GraphActions {
     exitStage: () => void;
     enterJob: (jobId: string) => void;
     exitJob: () => void;
+    openJobDrawer: (jobId: string) => void;
+    addStage: (name?: string, options?: { position?: { x: number; y: number }; afterNodeId?: string; noEdge?: boolean }) => void;
+    addJob: () => void;
 }
 
 export const GraphActionsContext = createContext<GraphActions>({
@@ -14,6 +17,9 @@ export const GraphActionsContext = createContext<GraphActions>({
     exitStage: () => undefined,
     enterJob: () => undefined,
     exitJob: () => undefined,
+    openJobDrawer: () => undefined,
+    addStage: () => undefined,
+    addJob: () => undefined,
 });
 
 export const useGraphActions = () => useContext(GraphActionsContext);

@@ -19,6 +19,4 @@ export type {
   NotificationChannel,
   NotificationTrigger,
 } from "./NotificationNode.js";
-export { ConditionNode } from "./ConditionNode.js";
-export type { ConditionNodeParams, Condition, ConditionOperator } from "./ConditionNode.js";
 export { NodeFactory } from "./NodeFactory.js";

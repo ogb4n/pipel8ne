@@ -1,6 +1,7 @@
 import { IGraphRepository } from "./IGraphRepository.js";
 import { IProjectRepository } from "../project/IProjectRepository.js";
 import { Graph, Viewport } from "./Graph.js";
+import type { TriggerNodeParams } from "./nodes/TriggerNode.js";
 import { Stage } from "./Stage.js";
 import { Edge } from "./Edge.js";
 import { NotFoundError, ForbiddenError, ValidationError } from "../errors.js";
@@ -40,7 +41,7 @@ export class GraphService {
   async create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { viewport: Viewport; trigger?: TriggerNodeParams; stages: Stage[]; stageEdges: Edge[] },
     requesterId: string,
   ): Promise<Graph> {
     const project = await this.projectRepository.findById(projectId);
@@ -49,11 +50,12 @@ export class GraphService {
     return this.graphRepository.create(projectId, name, data);
   }
 
-  /** Update a pipeline. Only the project owner can update pipelines. */
+  /** Update a pipeline. Only the project owner can update pipelines.
+   *  Draft pipelines skip node-level validation so incomplete work can be saved freely. */
   async update(
     pipelineId: string,
     projectId: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
     requesterId: string,
   ): Promise<Graph> {
     const project = await this.projectRepository.findById(projectId);
@@ -62,7 +64,10 @@ export class GraphService {
     const pipeline = await this.graphRepository.findById(pipelineId);
     if (!pipeline || pipeline.projectId !== projectId)
       throw new NotFoundError("Pipeline not found");
-    this.validateStages(data.stages);
+    if (data.status === "active") {
+      this.validateTrigger(data.trigger);
+      this.validateStages(data.stages);
+    }
     return this.graphRepository.update(pipelineId, data);
   }
 
@@ -89,6 +94,27 @@ export class GraphService {
   }
 
   // ── private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Validate pipeline-level trigger configuration.
+   * @throws {ValidationError} when trigger is missing or incomplete.
+   */
+  private validateTrigger(trigger?: TriggerNodeParams): void {
+    if (!trigger?.triggerType) {
+      throw new ValidationError("Pipeline must have a trigger configured to be activated.");
+    }
+    if (trigger.triggerType === "schedule" && !trigger.schedule) {
+      throw new ValidationError("Trigger: a cron schedule is required for schedule triggers.");
+    }
+    if (
+      (trigger.triggerType === "push" || trigger.triggerType === "pull_request") &&
+      !trigger.branches?.length
+    ) {
+      throw new ValidationError(
+        `Trigger: at least one branch pattern is required for "${trigger.triggerType}" trigger.`,
+      );
+    }
+  }
 
   /**
    * Validate all stages' jobs' steps using the Visitor pattern.
