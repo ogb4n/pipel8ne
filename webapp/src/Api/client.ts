@@ -224,6 +224,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ provider, code }),
       }),
+    connectWithCredential: (credentialId: string) =>
+      request<GitConnection>("/api/git-connections/connect-with-credential", {
+        method: "POST",
+        body: JSON.stringify({ credentialId }),
+      }),
     list: () => request<GitConnection[]>("/api/git-connections"),
     delete: (id: string) => request<void>(`/api/git-connections/${id}`, { method: "DELETE" }),
     listRepos: (connectionId: string) =>

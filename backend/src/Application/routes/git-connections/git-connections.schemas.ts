@@ -85,6 +85,20 @@ export const gitRepositoryListSchema = {
   items: gitRepositorySchema,
 } as const;
 
+/** Body POST /api/git-connections/connect-with-credential */
+export const connectWithCredentialBodySchema = {
+  type: "object",
+  required: ["credentialId"],
+  properties: {
+    credentialId: {
+      type: "string",
+      minLength: 1,
+      description: "ID du credential stocké à utiliser pour la connexion",
+    },
+  },
+  additionalProperties: false,
+} as const;
+
 export const errorSchema = {
   type: "object",
   properties: {

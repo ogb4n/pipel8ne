@@ -12,7 +12,7 @@ import type {
   GitProvider,
 } from "../Api/types";
 import CreateUserModal from "../Components/CreateUserModal";
-import { resetGitOnboardingDismiss } from "../Components/GitOnboardingModal";
+import GitOnboardingModal, { resetGitOnboardingDismiss } from "../Components/GitOnboardingModal";
 
 /* ─────────────────────────────────────────────
    Section registry
@@ -868,6 +868,13 @@ function SectionGitConnections() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  function reloadConnections() {
+    api.gitConnections.list()
+      .then(setConnections)
+      .catch(() => { /* ignore */ });
+  }
 
   useEffect(() => {
     Promise.all([api.gitConnections.list(), api.gitConnections.oauthConfig()])
@@ -882,7 +889,10 @@ function SectionGitConnections() {
   function handleConnect(provider: GitProvider) {
     if (!oauthConfig) return;
     const config = oauthConfig[provider];
-    if (!config.enabled) return;
+    if (!config.enabled) {
+      setShowOnboarding(true);
+      return;
+    }
     window.location.href = config.authUrl;
   }
 
@@ -904,6 +914,7 @@ function SectionGitConnections() {
   const connectedProviders = new Set(connections.map((c) => c.provider));
 
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Connexions Git</h2>
@@ -992,32 +1003,23 @@ function SectionGitConnections() {
                   return (
                     <button
                       key={provider}
-                      onClick={() => (connected ? undefined : handleConnect(provider))}
-                      disabled={!config.enabled || connected}
+                      onClick={() => { if (!connected) handleConnect(provider); }}
+                      disabled={connected}
                       className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border transition-colors ${
                         connected
                           ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 cursor-default"
-                          : config.enabled
-                            ? "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
-                            : "border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 opacity-50 cursor-not-allowed"
+                          : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
                       }`}
                       title={
-                        !config.enabled
-                          ? `${meta.label} n'est pas configuré sur le serveur`
-                          : connected
-                            ? `Déjà connecté à ${meta.label}`
-                            : `Se connecter à ${meta.label}`
+                        connected
+                          ? `Déjà connecté à ${meta.label}`
+                          : `Se connecter à ${meta.label}`
                       }
                     >
                       <span className="text-zinc-700 dark:text-zinc-300">{meta.icon}</span>
                       <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                         {connected ? `${meta.label} connecté` : `Connecter ${meta.label}`}
                       </span>
-                      {!config.enabled && (
-                        <span className="text-[10px] text-zinc-400 dark:text-zinc-600">
-                          (non configuré)
-                        </span>
-                      )}
                     </button>
                   );
                 })}
@@ -1027,6 +1029,14 @@ function SectionGitConnections() {
         </>
       )}
     </div>
+
+      {showOnboarding && (
+        <GitOnboardingModal
+          forceOpen
+          onClose={() => { setShowOnboarding(false); reloadConnections(); }}
+        />
+      )}
+    </>
   );
 }
 

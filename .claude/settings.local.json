@@ -11,7 +11,12 @@
       "Bash(grep -r condition /c/Users/virgil/Documents/Dev/Repos/pipel8ne/webapp/src --include=*.ts --include=*.tsx)",
       "Bash(grep -r condition /c/Users/virgil/Documents/Dev/Repos/pipel8ne/backend/src --include=*.ts)",
       "Bash(npm run:*)",
-      "Bash(netstat -aon)"
+      "Bash(netstat -aon)",
+      "Bash(find /c/Users/virgil/Documents/Dev/Repos/pipel8ne -type f -name *credential* -o -name *cred*)",
+      "Bash(find /c/Users/virgil/Documents/Dev/Repos/pipel8ne -name *git*connection* -type f)",
+      "Bash(find /c/Users/virgil/Documents/Dev/Repos/pipel8ne -path */Domain/* -name *git* -type f)",
+      "Bash(find /c/Users/virgil/Documents/Dev/Repos/pipel8ne/backend/src -name *Secret* -o -name *encrypt* -o -name *crypt*)",
+      "Bash(find /c/Users/virgil/Documents/Dev/Repos/pipel8ne -name *PageOAuthCallback* -o -name *oauth*callback*)"
     ]
   }
 }

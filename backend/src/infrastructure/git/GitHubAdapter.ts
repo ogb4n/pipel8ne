@@ -31,20 +31,18 @@ interface GitHubRepo {
 export class GitHubAdapter implements IGitPlatformAdapter {
   readonly provider: GitProvider = "github";
 
-  private readonly clientId: string;
-  private readonly clientSecret: string;
+  private readonly clientId: string | null;
+  private readonly clientSecret: string | null;
 
   constructor() {
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    if (!clientId || !clientSecret) {
-      throw new Error("GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET must be set");
-    }
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
+    this.clientId = process.env.GITHUB_CLIENT_ID ?? null;
+    this.clientSecret = process.env.GITHUB_CLIENT_SECRET ?? null;
   }
 
   async exchangeCodeForToken(code: string): Promise<string> {
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error("OAuth non configuré pour GitHub (GITHUB_CLIENT_ID/SECRET manquants)");
+    }
     const res = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
       headers: {

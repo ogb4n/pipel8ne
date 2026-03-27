@@ -34,20 +34,18 @@ interface AzureDevOpsRepo {
 export class AzureDevOpsAdapter implements IGitPlatformAdapter {
   readonly provider: GitProvider = "azure_devops";
 
-  private readonly clientSecret: string;
+  private readonly clientSecret: string | null;
   private readonly redirectUri: string;
 
   constructor() {
-    const clientId = process.env.AZURE_DEVOPS_CLIENT_ID;
-    const clientSecret = process.env.AZURE_DEVOPS_CLIENT_SECRET;
-    if (!clientId || !clientSecret) {
-      throw new Error("AZURE_DEVOPS_CLIENT_ID and AZURE_DEVOPS_CLIENT_SECRET must be set");
-    }
-    this.clientSecret = clientSecret;
+    this.clientSecret = process.env.AZURE_DEVOPS_CLIENT_SECRET ?? null;
     this.redirectUri = process.env.AZURE_DEVOPS_REDIRECT_URI ?? "";
   }
 
   async exchangeCodeForToken(code: string): Promise<string> {
+    if (!this.clientSecret) {
+      throw new Error("OAuth non configuré pour Azure DevOps (AZURE_DEVOPS_CLIENT_SECRET manquant)");
+    }
     const body = new URLSearchParams({
       client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
       client_assertion: this.clientSecret,
@@ -96,7 +94,7 @@ export class AzureDevOpsAdapter implements IGitPlatformAdapter {
     // 1. Get user profile to retrieve member ID
     const profileRes = await fetch(
       "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0",
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { headers: { Authorization: `Basic ${Buffer.from(`:${accessToken}`).toString("base64")}` } },
     );
     if (!profileRes.ok) {
       throw new Error(`Azure DevOps API /profile failed: ${profileRes.status}`);
@@ -106,7 +104,7 @@ export class AzureDevOpsAdapter implements IGitPlatformAdapter {
     // 2. List organizations the user belongs to
     const accountsRes = await fetch(
       `https://app.vssps.visualstudio.com/_apis/accounts?memberId=${encodeURIComponent(profile.id)}&api-version=7.0`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { headers: { Authorization: `Basic ${Buffer.from(`:${accessToken}`).toString("base64")}` } },
     );
     if (!accountsRes.ok) {
       throw new Error(`Azure DevOps API /accounts failed: ${accountsRes.status}`);
@@ -118,7 +116,7 @@ export class AzureDevOpsAdapter implements IGitPlatformAdapter {
     for (const account of accounts.value) {
       const reposRes = await fetch(
         `https://dev.azure.com/${encodeURIComponent(account.accountName)}/_apis/git/repositories?api-version=7.0`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        { headers: { Authorization: `Basic ${Buffer.from(`:${accessToken}`).toString("base64")}` } },
       );
       if (!reposRes.ok) continue; // Skip orgs we can't access
 

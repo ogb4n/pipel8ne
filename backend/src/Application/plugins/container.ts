@@ -59,25 +59,21 @@ export default fp(async function containerPlugin(app: FastifyInstance) {
   const apiKeyRepository = new ApiKeyRepository();
   const apiKeyService = new ApiKeyService(apiKeyRepository);
 
-  // Git platform adapters — conditionally loaded based on env vars
-  const gitAdapters: IGitPlatformAdapter[] = [];
-  if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    const { GitHubAdapter } = await import("../../infrastructure/git/GitHubAdapter.js");
-    gitAdapters.push(new GitHubAdapter());
-  }
-  if (process.env.GITLAB_CLIENT_ID && process.env.GITLAB_CLIENT_SECRET) {
-    const { GitLabAdapter } = await import("../../infrastructure/git/GitLabAdapter.js");
-    gitAdapters.push(new GitLabAdapter());
-  }
-  if (process.env.AZURE_DEVOPS_CLIENT_ID && process.env.AZURE_DEVOPS_CLIENT_SECRET) {
-    const { AzureDevOpsAdapter } = await import("../../infrastructure/git/AzureDevOpsAdapter.js");
-    gitAdapters.push(new AzureDevOpsAdapter());
-  }
+  // Git platform adapters — always loaded (OAuth env vars optional; only needed for exchangeCodeForToken)
+  const { GitHubAdapter } = await import("../../infrastructure/git/GitHubAdapter.js");
+  const { GitLabAdapter } = await import("../../infrastructure/git/GitLabAdapter.js");
+  const { AzureDevOpsAdapter } = await import("../../infrastructure/git/AzureDevOpsAdapter.js");
+  const gitAdapters: IGitPlatformAdapter[] = [
+    new GitHubAdapter(),
+    new GitLabAdapter(),
+    new AzureDevOpsAdapter(),
+  ];
   const gitConnectionRepository = new GitConnectionRepository();
   const gitConnectionService = new GitConnectionService(
     gitConnectionRepository,
     secretsService,
     gitAdapters,
+    credentialService,
   );
 
   app.decorate("userService", userService);

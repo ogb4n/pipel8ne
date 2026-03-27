@@ -96,6 +96,16 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valuePlaceholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     valueHint: "Créez un App Registration dans Azure AD, puis générez un Client Secret.",
   },
+  azure_devops: {
+    label: "Azure DevOps",
+    description: "Personal Access Token Azure DevOps pour accéder aux repositories Git.",
+    docsUrl: "https://dev.azure.com/_usersSettings/tokens",
+    labelSuggestion: "Mon token Azure DevOps",
+    valueLabel: "Personal Access Token",
+    valuePlaceholder: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    valueHint:
+      "Créez un PAT sur dev.azure.com → User Settings → Personal Access Tokens. Scope requis : Code (Read).",
+  },
   npm: {
     label: "npm",
     description:
@@ -149,6 +159,7 @@ export const PROVIDER_ORDER = [
   "aws",
   "gcp",
   "azure",
+  "azure_devops",
   "npm",
   "openai",
   "anthropic",

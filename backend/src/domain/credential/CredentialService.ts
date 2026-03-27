@@ -62,6 +62,15 @@ export class CredentialService {
     await this.credentialRepository.delete(id);
   }
 
+  /** Retourne un credential par ID après vérification de propriété (sans la valeur chiffrée). */
+  async getById(id: string, requestingUserId: string): Promise<PublicCredential> {
+    const credential = await this.credentialRepository.findById(id);
+    if (!credential) throw new NotFoundError("Credential introuvable");
+    if (credential.userId !== requestingUserId) throw new ForbiddenError("Accès interdit");
+    const { encryptedValue: _v, ...rest } = credential;
+    return rest;
+  }
+
   /**
    * Retourne la valeur déchiffrée d'un credential.
    * Réservé à l'usage interne (moteur d'exécution) — ne jamais exposer via l'API publique.

@@ -62,6 +62,10 @@ const PageProjects: React.FC = () => {
   const [reposLoading, setReposLoading] = useState(true);
   const [connectedProviders, setConnectedProviders] = useState<GitProvider[]>([]);
 
+  // Import repo modal
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showGitConnect, setShowGitConnect] = useState(false);
+
   const fetchCredentials = async () => {
     try {
       setCredLoading(true);
@@ -152,13 +156,13 @@ const PageProjects: React.FC = () => {
         visibility: newVisibility,
         ...(selectedRepo
           ? {
-              gitRepository: {
-                cloneUrl: selectedRepo.cloneUrl,
-                fullName: selectedRepo.fullName,
-                defaultBranch: selectedRepo.defaultBranch,
-                provider: selectedRepo.provider,
-              },
-            }
+            gitRepository: {
+              cloneUrl: selectedRepo.cloneUrl,
+              fullName: selectedRepo.fullName,
+              defaultBranch: selectedRepo.defaultBranch,
+              provider: selectedRepo.provider,
+            },
+          }
           : {}),
       });
       setShowForm(false);
@@ -178,6 +182,14 @@ const PageProjects: React.FC = () => {
   const closeForm = () => {
     setShowForm(false);
     setSelectedRepo(null);
+  };
+
+  const handleImportRepoClick = () => {
+    if (connectedProviders.length === 0) {
+      setShowGitConnect(true);
+    } else {
+      setShowImportModal(true);
+    }
   };
 
   const openCreateFromRepo = (repo: RepoWithProvider) => {
@@ -201,7 +213,13 @@ const PageProjects: React.FC = () => {
 
   return (
     <>
-      <GitOnboardingModal />
+      <GitOnboardingModal
+        forceOpen={showGitConnect}
+        onClose={() => {
+          setShowGitConnect(false);
+          void fetchRepos();
+        }}
+      />
       <div className="max-w-5xl mx-auto py-10 px-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -423,6 +441,37 @@ const PageProjects: React.FC = () => {
           </div>
         )}
 
+        {/* Import repo modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-3xl mx-4 shadow-xl max-h-[85vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Importer un dépôt Git</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(false)}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 overflow-y-auto">
+                <RepoList
+                  repos={repos}
+                  loading={reposLoading}
+                  connectedProviders={connectedProviders}
+                  onSelectRepo={(repo) => {
+                    setShowImportModal(false);
+                    openCreateFromRepo(repo);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-zinc-400 dark:text-zinc-500">
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -442,7 +491,15 @@ const PageProjects: React.FC = () => {
           <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl py-20 flex flex-col items-center gap-2">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Aucun projet pour l'instant</p>
             <p className="text-xs text-zinc-400 dark:text-zinc-600">
-              Créez votre premier projet ci-dessus
+              Créez votre premier projet ou{" "}
+              <button
+                type="button"
+                onClick={handleImportRepoClick}
+                className="text-accent-500 hover:text-accent-600 underline underline-offset-2 transition-colors"
+              >
+                connectez un dépôt Git
+              </button>
+              {" "}pour commencer à construire vos pipelines
             </p>
           </div>
         ) : (
@@ -464,11 +521,10 @@ const PageProjects: React.FC = () => {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 ml-2 text-xs px-1.5 py-0.5 rounded font-medium ${
-                      p.visibility === "public"
+                    className={`shrink-0 ml-2 text-xs px-1.5 py-0.5 rounded font-medium ${p.visibility === "public"
                         ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
                         : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                    }`}
+                      }`}
                   >
                     {p.visibility === "public" ? "public" : "privé"}
                   </span>

@@ -32,24 +32,22 @@ interface GitLabProject {
 export class GitLabAdapter implements IGitPlatformAdapter {
   readonly provider: GitProvider = "gitlab";
 
-  private readonly clientId: string;
-  private readonly clientSecret: string;
+  private readonly clientId: string | null;
+  private readonly clientSecret: string | null;
   private readonly baseUrl: string;
   private readonly redirectUri: string;
 
   constructor() {
-    const clientId = process.env.GITLAB_CLIENT_ID;
-    const clientSecret = process.env.GITLAB_CLIENT_SECRET;
-    if (!clientId || !clientSecret) {
-      throw new Error("GITLAB_CLIENT_ID and GITLAB_CLIENT_SECRET must be set");
-    }
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
+    this.clientId = process.env.GITLAB_CLIENT_ID ?? null;
+    this.clientSecret = process.env.GITLAB_CLIENT_SECRET ?? null;
     this.baseUrl = process.env.GITLAB_BASE_URL ?? "https://gitlab.com";
     this.redirectUri = process.env.GITLAB_REDIRECT_URI ?? "";
   }
 
   async exchangeCodeForToken(code: string): Promise<string> {
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error("OAuth non configuré pour GitLab (GITLAB_CLIENT_ID/SECRET manquants)");
+    }
     const res = await fetch(`${this.baseUrl}/oauth/token`, {
       method: "POST",
       headers: {
