@@ -1,4 +1,5 @@
 import { Graph, Viewport } from "./Graph.js";
+import type { TriggerNodeParams } from "./nodes/TriggerNode.js";
 import { Stage } from "./Stage.js";
 import { Edge } from "./Edge.js";
 
@@ -8,11 +9,11 @@ export interface IGraphRepository {
   create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { viewport: Viewport; trigger?: TriggerNodeParams; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph>;
   update(
     id: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph>;
   delete(id: string): Promise<void>;
 }

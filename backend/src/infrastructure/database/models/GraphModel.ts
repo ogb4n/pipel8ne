@@ -89,7 +89,6 @@ const JobSchema = new Schema(
     runsOn: { type: String, required: true, default: "ubuntu-latest" },
     condition: { type: JobConditionSchema, required: false },
     steps: { type: [NodeSchema], default: [] },
-    stepEdges: { type: [EdgeSchema], default: [] },
   },
   { _id: false },
 );
@@ -155,7 +154,6 @@ type JobDoc = {
     logicalOperator: "AND" | "OR";
   };
   steps: NodeDoc[];
-  stepEdges: EdgeDoc[];
 };
 
 type StageDoc = {
@@ -168,6 +166,8 @@ type StageDoc = {
 export interface IGraphDocument extends Document {
   projectId: string;
   name: string;
+  status: "draft" | "active";
+  trigger?: Record<string, unknown>;
   viewport: { x: number; y: number; zoom: number };
   stages: StageDoc[];
   /** Edges between stages — source/target are stage IDs, define execution order. */
@@ -178,6 +178,8 @@ const GraphSchema = new Schema<IGraphDocument>(
   {
     projectId: { type: String, required: true, index: true },
     name: { type: String, required: true, default: "Pipeline" },
+    status: { type: String, enum: ["draft", "active"], default: "draft" },
+    trigger: { type: Schema.Types.Mixed, default: undefined },
     viewport: { type: ViewportSchema, required: true, default: () => ({ x: 0, y: 0, zoom: 1 }) },
     stages: { type: [StageSchema], default: [] },
     stageEdges: { type: [EdgeSchema], default: [] },

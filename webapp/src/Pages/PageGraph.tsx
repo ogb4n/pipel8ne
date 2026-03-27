@@ -17,14 +17,14 @@ import { NodeConfigPanel } from "../Components/Graph/NodeConfigPanel";
 import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
 import StageEdge from "../Components/Graph/edges/StageEdge";
 import JobEdge from "../Components/Graph/edges/JobEdge";
-import StepDrawer from "../Components/Graph/StepDrawer";
 import PipelineBreadcrumb from "../Components/Graph/PipelineBreadcrumb";
 import type { GraphNode, GraphEdge, JobConditionGuard } from "../Api/types";
 
 const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
 
-/** Node types that open a config panel when selected (step-level nodes, not stage/job cards) */
-const CONFIG_PANEL_NODE_TYPES = new Set(["cicdNode", "triggerNode"]);
+const CONFIG_PANEL_NODE_TYPES = new Set([
+    "shell_command", "docker", "git", "test", "build", "deploy", "notification",
+]);
 
 interface PageGraphCanvasProps {
   projectId?: string;
@@ -94,6 +94,31 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     () => ({ type: activeStageId ? "jobEdge" : "stageEdge" }),
     [activeStageId],
   );
+    const selectedNode = nodes.find(
+        (n) => n.id === selectedNodeId && CONFIG_PANEL_NODE_TYPES.has(n.type ?? ""),
+    ) ?? null;
+
+    const activeStageName = useMemo(
+        () => (activeStageId ? (pipeline?.stages.find((s) => s.id === activeStageId)?.name ?? null) : null),
+        [activeStageId, pipeline],
+    );
+
+    const activeJobName = useMemo(() => {
+        if (!activeJobId) return null;
+        const jobNode = nodes.find((n) => n.id === activeJobId);
+        const jobNodeData = jobNode?.data as any | undefined;
+        const nodeName: string | null =
+            jobNodeData?.name ?? jobNodeData?.label ?? jobNodeData?.title ?? null;
+        if (nodeName) return nodeName;
+        if (!activeStageId) return null;
+        const stage = pipeline?.stages.find((s) => s.id === activeStageId);
+        return stage?.jobs.find((j) => j.id === activeJobId)?.name ?? null;
+    }, [activeJobId, activeStageId, nodes, pipeline]);
+
+    const defaultEdgeOptions = useMemo(
+        () => ({ type: activeJobId ? "default" : activeStageId ? "jobEdge" : "stageEdge" }),
+        [activeStageId, activeJobId],
+    );
 
   const handleDelete = async () => {
     if (!window.confirm("Supprimer cette pipeline ? Cette action est irréversible.")) return;

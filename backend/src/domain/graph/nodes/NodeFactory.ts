@@ -13,8 +13,6 @@
  */
 import type { Node } from "../Node.js";
 import { BaseNode } from "./BaseNode.js";
-import { TriggerNode } from "./TriggerNode.js";
-import type { TriggerNodeParams } from "./TriggerNode.js";
 import { ShellCommandNode } from "./ShellCommandNode.js";
 import type { ShellCommandNodeParams } from "./ShellCommandNode.js";
 import { DockerNode } from "./DockerNode.js";
@@ -49,9 +47,6 @@ export class NodeFactory {
     const raw = data.params.baseParameters;
 
     switch (dto.type) {
-      case "trigger":
-        return new TriggerNode(id, positionX, positionY, data, raw as unknown as TriggerNodeParams);
-
       case "shell_command":
         return new ShellCommandNode(
           id,

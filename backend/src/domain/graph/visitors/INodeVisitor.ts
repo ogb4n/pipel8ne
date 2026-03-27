@@ -8,7 +8,6 @@
  * every existing visitor (the compiler will then point to every site that
  * needs updating).
  */
-import type { TriggerNode } from "../nodes/TriggerNode";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode";
 import type { DockerNode } from "../nodes/DockerNode";
 import type { GitNode } from "../nodes/GitNode";
@@ -19,8 +18,8 @@ import type { NotificationNode } from "../nodes/NotificationNode";
 import type { ConditionNode } from "../nodes/ConditionNode";
 import type { InvokableNode } from "../nodes/InvokableNode";
 
+
 export interface INodeVisitor {
-  visitTrigger(node: TriggerNode): void;
   visitShellCommand(node: ShellCommandNode): void;
   visitDocker(node: DockerNode): void;
   visitGit(node: GitNode): void;

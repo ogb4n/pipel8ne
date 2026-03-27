@@ -9,7 +9,8 @@ export interface JobGuardCondition {
 
 /**
  * A Job groups a set of steps (nodes) within a Stage.
- * All jobs in a stage run in parallel; steps within a job run sequentially.
+ * All jobs in a stage run in parallel; steps within a job run sequentially
+ * (order is defined by the array position).
  */
 export interface Job {
   id: string;
@@ -18,8 +19,6 @@ export interface Job {
   runsOn: string;
   /** Optional guard evaluated before running the job. */
   condition?: JobGuardCondition;
-  /** The steps (nodes) belonging to this job */
+  /** The steps (nodes) belonging to this job, executed in array order */
   steps: Node[];
-  /** Edges between steps within this job (defines step execution order) */
-  stepEdges: Edge[];
 }

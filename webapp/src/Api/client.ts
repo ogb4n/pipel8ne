@@ -6,6 +6,7 @@ import type {
   Stage,
   GraphEdge,
   Viewport,
+  TriggerNodeParams,
   Credential,
   ApiKey,
   CreateApiKeyResponse,
@@ -162,7 +163,7 @@ export const api = {
     update: (
       projectId: string,
       pipelineId: string,
-      data: { viewport: Viewport; stages: Stage[]; stageEdges: GraphEdge[] },
+      data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: GraphEdge[] },
     ) =>
       request<Graph>(`/api/projects/${projectId}/pipelines/${pipelineId}`, {
         method: "PUT",

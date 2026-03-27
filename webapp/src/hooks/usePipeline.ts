@@ -25,7 +25,9 @@ import type {
   NodeData,
   JobConditionGuard,
   Viewport,
+  TriggerNodeParams,
 } from "../Api/types";
+import { nodeConfig } from "../Components/Graph/nodeConfig";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,7 @@ function stageEdgeToRF(e: GraphEdge): RFEdge {
     source: e.source,
     target: e.target,
     type: "stageEdge",
-    data: { condition: e.condition ?? "on_success" },
+    data: {},
   };
 }
 
@@ -84,8 +86,6 @@ function rfPipelineViewToStages(
     source: e.source,
     target: e.target,
     type: e.type ?? "stageEdge",
-    condition: (e.data as { condition?: "on_success" | "always" | "on_failure" } | undefined)
-      ?.condition,
     waypoint: (e.data as { waypoint?: { x: number; y: number } } | undefined)?.waypoint,
   });
 
@@ -124,7 +124,6 @@ function stageJobsToRFNodes(stage: Stage): RFNode[] {
       runsOn: job.runsOn,
       condition: job.condition,
       steps: job.steps,
-      stepEdges: job.stepEdges,
     } as unknown as Record<string, unknown>,
   }));
 }
@@ -156,7 +155,6 @@ function rfJobNodesToJobs(
         runsOn?: string;
         condition?: JobConditionGuard;
         steps?: GraphNode[];
-        stepEdges?: GraphEdge[];
       };
       return {
         id: n.id,
@@ -164,12 +162,38 @@ function rfJobNodesToJobs(
         runsOn: d.runsOn ?? "ubuntu-latest",
         condition: d.condition,
         steps: d.steps ?? [],
-        stepEdges: d.stepEdges ?? [],
         position: n.position,
       };
     });
 
   return { jobs, jobEdges };
+}
+
+// ── Job view converters (step nodes on canvas) ────────────────────────────────
+
+/** Convert Job.steps → flat RF step nodes for the job-level canvas */
+function jobStepsToRFNodes(job: Job): RFNode[] {
+  return job.steps.map((step, i) => ({
+    id: step.id,
+    type: step.type,
+    position: {
+      // Use stored coordinates when present; fall back to defaults only if unset.
+      x: step.positionX ?? 80 + i * 300,
+      y: step.positionY ?? 100,
+    },
+    data: step.data as unknown as Record<string, unknown>,
+  }));
+}
+
+/** RF job-view nodes → steps for one job (steps are sequential by array order) */
+function rfStepNodesToSteps(rfNodes: RFNode[]): GraphNode[] {
+  return rfNodes.map((n) => ({
+    id: n.id,
+    type: n.type as NodeType,
+    positionX: n.position.x,
+    positionY: n.position.y,
+    data: n.data as unknown as NodeData,
+  }));
 }
 
 // ── YAML export helpers ──────────────────────────────────────────────────────
@@ -252,24 +276,9 @@ const buildJobNeedsMap = (stage: Stage): Record<string, string[]> => {
   return map;
 };
 
-const buildStepDepsMap = (job: Job): Record<string, string[]> => {
-  const map: Record<string, string[]> = {};
-  job.stepEdges.forEach((e) => {
-    if (!map[e.target]) map[e.target] = [];
-    const depStep = job.steps.find((s) => s.id === e.source);
-    if (depStep) map[e.target].push(depStep.data.label);
-  });
-  return map;
-};
-
-const renderStep = (
-  step: GraphNode,
-  stepDepsMap: Record<string, string[]>,
-): Record<string, unknown> => {
+const renderStep = (step: GraphNode): Record<string, unknown> => {
   const entry: Record<string, unknown> = { id: step.id, name: step.data.label, type: step.type };
   if (step.data.description) entry.description = step.data.description;
-  const stepDeps = stepDepsMap[step.id];
-  if (stepDeps?.length) entry.depends_on = stepDeps;
   const baseParams = step.data.params?.baseParameters ?? {};
   if (Object.keys(baseParams).length > 0) entry.params = baseParams;
   if (Object.keys(step.data.env ?? {}).length > 0) entry.env = step.data.env;
@@ -321,6 +330,8 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const [pipeline, setPipeline] = useState<Graph | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<"draft" | "active">("draft");
+  const [pipelineTrigger, setPipelineTrigger] = useState<TriggerNodeParams | undefined>(undefined);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
   const [status, setStatus] = useState<"idle" | "loading" | "saving" | "deleting">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -330,9 +341,13 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
   // ── Navigation state ────────────────────────────────────────────────────────
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   /** Snapshot of pipeline-view nodes/edges while drilling into a stage */
   const pipelineCanvasNodesRef = useRef<RFNode[]>([]);
   const pipelineCanvasEdgesRef = useRef<RFEdge[]>([]);
+  /** Snapshot of stage-view nodes/edges while drilling into a job */
+  const stageCanvasNodesRef = useRef<RFNode[]>([]);
+  const stageCanvasEdgesRef = useRef<RFEdge[]>([]);
 
   const {
     getIntersectingNodes,
@@ -351,6 +366,8 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       .then((raw) => {
         const p = normalizeLegacyGraph(raw as LegacyGraph);
         setPipeline(p);
+        setPipelineStatus(p.status ?? "draft");
+        setPipelineTrigger(p.trigger);
         // Pipeline view: one stageCard node per stage, stageEdges only
         const rfNodes = p.stages.map(stageToRFCardNode);
         const rfEdges: RFEdge[] = p.stageEdges.map(stageEdgeToRF);
@@ -421,18 +438,128 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     setNodes(restoredNodes);
     setEdges(pipelineCanvasEdgesRef.current);
     setActiveStageId(null);
-    setOpenDrawerJobId(null);
 
     setTimeout(() => {
       fitView({ padding: 0.15, duration: 300 });
     }, 50);
   }, [activeStageId, getNodes, getEdges, setPipeline, setNodes, setEdges, fitView]);
 
+  // ── Navigation: enter a job canvas ──────────────────────────────────────────
+  const enterJob = useCallback(
+    (jobId: string) => {
+      const jobNode = getNodes().find((n) => n.id === jobId);
+      if (!jobNode) return;
+      const d = jobNode.data as { steps?: GraphNode[] };
+      const fakeJob: Job = {
+        id: jobId,
+        name: (jobNode.data as { name?: string }).name ?? "job",
+        runsOn: (jobNode.data as { runsOn?: string }).runsOn ?? "ubuntu-latest",
+        steps: d.steps ?? [],
+        position: jobNode.position,
+      };
+
+      // Snapshot stage canvas
+      stageCanvasNodesRef.current = getNodes();
+      stageCanvasEdgesRef.current = getEdges();
+
+      const stepNodes = jobStepsToRFNodes(fakeJob);
+
+      setNodes(stepNodes);
+      setEdges([]);
+      setActiveJobId(jobId);
+
+      setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+    },
+    [getNodes, getEdges, setNodes, setEdges, fitView],
+  );
+
+  // ── Navigation: exit job canvas, return to stage canvas ─────────────────────
+  const exitJob = useCallback(() => {
+    if (!activeJobId) return;
+
+    const steps = rfStepNodesToSteps(getNodes());
+
+    // Update job data in stage canvas snapshot
+    const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
+      n.id === activeJobId
+        ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
+        : n,
+    );
+
+    setNodes(updatedStageNodes);
+    setEdges(stageCanvasEdgesRef.current);
+    setActiveJobId(null);
+
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [activeJobId, getNodes, setNodes, setEdges, fitView]);
+
+  // ── Navigation: exit job + stage in one go ───────────────────────────────────
+  const exitJobAndStage = useCallback(() => {
+    if (!activeJobId || !activeStageId) return;
+
+    // 1. Capture step canvas
+    const steps = rfStepNodesToSteps(getNodes());
+
+    // 2. Rebuild stage nodes with updated step data
+    const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
+      n.id === activeJobId
+        ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
+        : n,
+    );
+
+    // 3. Derive jobs from updated stage nodes
+    const { jobs, jobEdges } = rfJobNodesToJobs(updatedStageNodes, stageCanvasEdgesRef.current);
+
+    // 4. Update pipeline domain state
+    setPipeline((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        stages: prev.stages.map((s) =>
+          s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
+        ),
+      };
+    });
+
+    // 5. Restore pipeline canvas with updated jobCount badge
+    const restoredPipelineNodes = pipelineCanvasNodesRef.current.map((n) =>
+      n.id === activeStageId
+        ? { ...n, data: { ...(n.data as Record<string, unknown>), jobCount: jobs.length } }
+        : n,
+    );
+
+    setNodes(restoredPipelineNodes);
+    setEdges(pipelineCanvasEdgesRef.current);
+    setActiveJobId(null);
+    setActiveStageId(null);
+    setOpenDrawerJobId(null);
+
+    setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 50);
+  }, [activeJobId, activeStageId, getNodes, getEdges, setPipeline, setNodes, setEdges, fitView]);
+
   // ── Helper: get current full pipeline state from whichever canvas is active ─
   const getCurrentStagesAndEdges = useCallback((): {
     stages: Stage[];
     stageEdges: GraphEdge[];
   } => {
+    if (activeJobId) {
+      // In job canvas: fold steps back into stage snapshot, then process stage
+      const steps = rfStepNodesToSteps(getNodes());
+      const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
+        n.id === activeJobId
+          ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
+          : n,
+      );
+      const { jobs, jobEdges } = rfJobNodesToJobs(updatedStageNodes, stageCanvasEdgesRef.current);
+      const allStages = (pipeline?.stages ?? []).map((s) =>
+        s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
+      );
+      return rfPipelineViewToStages(
+        pipelineCanvasNodesRef.current,
+        pipelineCanvasEdgesRef.current,
+        allStages,
+      );
+    }
     if (activeStageId) {
       const { jobs, jobEdges } = rfJobNodesToJobs(getNodes(), getEdges());
       const allStages = (pipeline?.stages ?? []).map((s) =>
@@ -445,16 +572,15 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       );
     }
     return rfPipelineViewToStages(nodes, edges, pipeline?.stages ?? []);
-  }, [activeStageId, nodes, edges, pipeline, getNodes, getEdges]);
+  }, [activeJobId, activeStageId, nodes, edges, pipeline, getNodes, getEdges]);
 
   // ── onConnect ────────────────────────────────────────────────────────────────
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      const edgeType = activeStageId ? "jobEdge" : "stageEdge";
-      const data = edgeType === "stageEdge" ? { condition: "on_success" } : {};
-      setEdges((eds) => addEdge({ ...connection, type: edgeType, data }, eds));
+      const edgeType = activeJobId ? "default" : activeStageId ? "jobEdge" : "stageEdge";
+      setEdges((eds) => addEdge({ ...connection, type: edgeType, data: {} }, eds));
     },
-    [setEdges, activeStageId],
+    [setEdges, activeStageId, activeJobId],
   );
 
   // ── Drag handlers (legacy reparenting — no-op for new stageCard/jobCard types) ─
@@ -576,7 +702,6 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
             name: jobName,
             runsOn: runsOn ?? "ubuntu-latest",
             steps: [],
-            stepEdges: [],
           } as unknown as Record<string, unknown>,
         },
       ]);
@@ -586,21 +711,31 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
   // ── addStage ─────────────────────────────────────────────────────────────────
   const addStage = useCallback(
-    (name?: string) => {
+    (name?: string, options?: { position?: { x: number; y: number }; afterNodeId?: string; noEdge?: boolean }) => {
       const id = `stage-${Date.now()}`;
       const existingStages = nodes.filter((n) => n.type === "stageCard");
       const stageCount = existingStages.length;
       const stageName = name ?? `stage-${stageCount + 1}`;
 
-      // Find the last stage (no outgoing stageEdge)
+      // Determine which node to connect from
+      const afterNode = options?.afterNodeId
+        ? existingStages.find((n) => n.id === options.afterNodeId)
+        : undefined;
+
+      // Find the last stage (no outgoing stageEdge) for default chaining
       const stageIds = new Set(existingStages.map((n) => n.id));
       const sourcedIds = new Set(
         edges.filter((e) => stageIds.has(e.source) && stageIds.has(e.target)).map((e) => e.source),
       );
-      const lastStage =
-        existingStages.find((n) => !sourcedIds.has(n.id)) ?? existingStages[stageCount - 1];
+      const lastStage = afterNode
+        ?? existingStages.find((n) => !sourcedIds.has(n.id))
+        ?? existingStages[stageCount - 1];
 
-      const newPos = { x: 80 + stageCount * (STAGE_CARD_WIDTH + 80), y: 80 };
+      // Position: explicit > derived from afterNode > auto-grid
+      const newPos = options?.position
+        ?? (afterNode
+          ? { x: afterNode.position.x + STAGE_CARD_WIDTH + 80, y: afterNode.position.y }
+          : { x: 80 + stageCount * (STAGE_CARD_WIDTH + 80), y: 80 });
 
       // Keep pipeline domain state in sync
       setPipeline((prev) => {
@@ -621,7 +756,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         },
       ]);
 
-      if (lastStage) {
+      if (lastStage && !options?.noEdge) {
         setEdges((eds) => [
           ...eds,
           {
@@ -629,12 +764,38 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
             source: lastStage.id,
             target: id,
             type: "stageEdge",
-            data: { condition: "on_success" },
+            data: {},
           },
         ]);
       }
     },
     [nodes, edges, setNodes, setEdges, setPipeline],
+  );
+
+  // ── addStepNode ───────────────────────────────────────────────────────────────
+  /** Add a step node directly to the job canvas. Only works when activeJobId is set. */
+  const addStepNode = useCallback(
+    (type: NodeType) => {
+      if (!activeJobId) return;
+      const id = `step-${Date.now()}`;
+      const cfg = nodeConfig[type];
+      setNodes((nds) => [
+        ...nds,
+        {
+          id,
+          type,
+          position: { x: 80 + nds.length * 300, y: 100 },
+          data: {
+            label: cfg.label,
+            description: "",
+            params: { baseParameters: cfg.defaultParams },
+            env: {},
+            secrets: {},
+          } as unknown as Record<string, unknown>,
+        },
+      ]);
+    },
+    [activeJobId, setNodes],
   );
 
   // ── save ─────────────────────────────────────────────────────────────────────
@@ -645,11 +806,15 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     try {
       const { stages, stageEdges } = getCurrentStagesAndEdges();
       const result = await api.pipelines.update(projectId, pipelineId, {
+        status: pipelineStatus,
+        trigger: pipelineTrigger,
         viewport,
         stages,
         stageEdges,
       });
       setPipeline(result);
+      setPipelineStatus(result.status ?? "draft");
+      setPipelineTrigger(result.trigger);
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 2000);
     } catch (err) {
@@ -657,7 +822,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     } finally {
       setStatus("idle");
     }
-  }, [projectId, pipelineId, viewport, getCurrentStagesAndEdges]);
+  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges]);
 
   // ── exportToYaml ─────────────────────────────────────────────────────────────
   const exportToYaml = useCallback(
@@ -665,54 +830,50 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       const { stages, stageEdges } = getCurrentStagesAndEdges();
       const stageOrder = topoSortStages(stages, stageEdges);
 
-      const stageConditionMap: Record<string, "on_success" | "always" | "on_failure"> = {};
-      for (const edge of stageEdges) {
-        stageConditionMap[edge.target] = edge.condition ?? "on_success";
-      }
-
       let doc: Record<string, unknown>;
 
       if (format === "github") {
         const ghJobs: Record<string, unknown> = {};
-        let prevStageJobNames: string[] = [];
+        const stageJobNamesMap: Record<string, string[]> = {};
         for (const stage of stageOrder) {
-          const stageCondition = stageConditionMap[stage.id] ?? "on_success";
-          const ghIf =
-            stageCondition === "always"
-              ? "always()"
-              : stageCondition === "on_failure"
-                ? "${{ failure() }}"
-                : undefined;
           const jobNeedsMap = buildJobNeedsMap(stage);
+          const parentJobNames = stageEdges
+            .filter((e) => e.target === stage.id)
+            .flatMap((e) => stageJobNamesMap[e.source] ?? []);
           const currJobNames: string[] = [];
           for (const job of stage.jobs) {
-            const stepDepsMap = buildStepDepsMap(job);
             const jobEntry: Record<string, unknown> = { "runs-on": job.runsOn };
             const intraNeeds = jobNeedsMap[job.id] ?? [];
-            const crossNeeds =
-              prevStageJobNames.length > 0 && intraNeeds.length === 0 ? prevStageJobNames : [];
+            const crossNeeds = parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
             const needs = [...intraNeeds, ...crossNeeds];
             if (needs.length > 0) jobEntry.needs = needs;
-            if (ghIf) jobEntry.if = ghIf;
-            jobEntry.steps = job.steps.map((step) => renderStep(step, stepDepsMap));
+            jobEntry.steps = job.steps.map((step) => renderStep(step));
             ghJobs[job.name] = jobEntry;
             currJobNames.push(job.name);
           }
-          prevStageJobNames = currJobNames;
+          stageJobNamesMap[stage.id] = currJobNames;
         }
-        doc = { name: pipeline?.name ?? "pipeline", on: ["push"], jobs: ghJobs };
+        const ghOn = pipelineTrigger
+          ? (() => {
+              const t = pipelineTrigger;
+              if (t.triggerType === "push") return { push: { branches: t.branches ?? ["main"] } };
+              if (t.triggerType === "pull_request") return { pull_request: { branches: t.branches ?? ["main"] } };
+              if (t.triggerType === "schedule") return { schedule: [{ cron: t.schedule ?? "0 0 * * *" }] };
+              if (t.triggerType === "tag") return { push: { tags: t.tags ?? ["v*"] } };
+              return "workflow_dispatch";
+            })()
+          : ["push"];
+        doc = { name: pipeline?.name ?? "pipeline", on: ghOn, jobs: ghJobs };
       } else if (format === "gitlab") {
         const stageNames = stageOrder.map((s) => s.name);
         const glJobs: Record<string, unknown> = {};
+        const stageJobNamesMap: Record<string, string[]> = {};
         for (const stage of stageOrder) {
-          const stageCondition = stageConditionMap[stage.id] ?? "on_success";
-          const glWhen =
-            stageCondition === "always"
-              ? "always"
-              : stageCondition === "on_failure"
-                ? "on_failure"
-                : undefined;
           const jobNeedsMap = buildJobNeedsMap(stage);
+          const parentJobNames = stageEdges
+            .filter((e) => e.target === stage.id)
+            .flatMap((e) => stageJobNamesMap[e.source] ?? []);
+          const currJobNames: string[] = [];
           for (const job of stage.jobs) {
             const scripts = job.steps.flatMap((step) => {
               const params = step.data.params?.baseParameters ?? {};
@@ -721,27 +882,22 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
               return typeof script === "string" ? [script] : [`# ${step.data.label}`];
             });
             const intraNeeds = jobNeedsMap[job.id] ?? [];
+            const crossNeeds = parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
             const jobConfig: Record<string, unknown> = {
               stage: stage.name,
               tags: [job.runsOn],
-              needs: intraNeeds,
+              needs: [...intraNeeds, ...crossNeeds],
               script: scripts.length > 0 ? scripts : ["echo done"],
             };
-            if (glWhen) jobConfig.when = glWhen;
             glJobs[job.name] = jobConfig;
+            currJobNames.push(job.name);
           }
+          stageJobNamesMap[stage.id] = currJobNames;
         }
         doc = { stages: stageNames, ...glJobs };
       } else {
         // azure
         const azureStages = stageOrder.map((stage) => {
-          const stageCondition = stageConditionMap[stage.id] ?? "on_success";
-          const azCondition =
-            stageCondition === "always"
-              ? "always()"
-              : stageCondition === "on_failure"
-                ? "failed()"
-                : undefined;
           const deps = stageEdges
             .filter((e) => e.target === stage.id)
             .map((e) => stages.find((s) => s.id === e.source)?.name)
@@ -766,10 +922,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
               return jobEntry;
             }),
           };
-          if (azCondition) stageEntry.condition = azCondition;
           return stageEntry;
         });
-        doc = { trigger: ["main"], stages: azureStages };
+        const azTrigger = pipelineTrigger?.branches ?? ["main"];
+        doc = { trigger: azTrigger, stages: azureStages };
       }
 
       let yaml = "";
@@ -794,7 +950,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     },
-    [getCurrentStagesAndEdges, pipeline],
+    [getCurrentStagesAndEdges, pipeline, pipelineTrigger],
   );
 
   // ── deletePipeline ───────────────────────────────────────────────────────────
@@ -847,6 +1003,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
   return {
     pipeline,
+    pipelineStatus,
+    setPipelineStatus,
+    pipelineTrigger,
+    setPipelineTrigger,
     nodes,
     edges,
     status,
@@ -855,6 +1015,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     selectedNodeId,
     openDrawerJobId,
     activeStageId,
+    activeJobId,
     onNodesChange,
     onEdgesChange,
     onConnect,
@@ -864,6 +1025,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     addStep,
     addStage,
     addJob,
+    addStepNode,
     save,
     exportToYaml,
     deletePipeline,
@@ -874,6 +1036,9 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     updateNodeData,
     enterStage,
     exitStage,
+    enterJob,
+    exitJob,
+    exitJobAndStage,
     setViewport,
   };
 };

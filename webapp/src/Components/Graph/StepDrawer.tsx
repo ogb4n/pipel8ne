@@ -1188,6 +1188,10 @@ const StepDrawer: React.FC<StepDrawerProps> = ({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+    const handleDeleteStep = (index: number) => {
+        const newSteps = steps.filter((_, i) => i !== index);
+        onUpdateJob(jobId, { steps: newSteps });
+    };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

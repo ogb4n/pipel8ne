@@ -32,7 +32,6 @@ export interface Project {
 }
 // ── Node type discriminator ─────────────────────────────────────────────────
 export type NodeType =
-  | "trigger"
   | "shell_command"
   | "docker"
   | "git"
@@ -179,7 +178,6 @@ export interface InvokableNodeParams {
 
 /** Union of all typed params, keyed by node type */
 export type NodeParamsByType = {
-  trigger: TriggerNodeParams;
   shell_command: ShellCommandNodeParams;
   docker: DockerNodeParams;
   git: GitNodeParams;
@@ -235,8 +233,6 @@ export interface GraphEdge {
   type: string;
   /** Optional reroute waypoint stored as flow coordinates */
   waypoint?: { x: number; y: number };
-  /** Execution condition for stage→stage edges */
-  condition?: "on_success" | "always" | "on_failure";
 }
 export interface Viewport {
   x: number;
@@ -249,7 +245,6 @@ export interface Job {
   runsOn: string;
   condition?: JobConditionGuard;
   steps: GraphNode[];
-  stepEdges: GraphEdge[];
   /** Canvas position in stage view */
   position?: { x: number; y: number };
 }
@@ -267,6 +262,10 @@ export interface Graph {
   id: string;
   projectId: string;
   name: string;
+  /** draft = work in progress, no validation enforced. active = fully validated. */
+  status: "draft" | "active";
+  /** Pipeline-level trigger configuration */
+  trigger?: TriggerNodeParams;
   viewport: Viewport;
   /** Stages composing the pipeline. */
   stages: Stage[];

@@ -1,5 +1,6 @@
 import { GraphModel } from "../models/GraphModel.js";
 import { Graph, Viewport } from "../../../Domain/graph/Graph.js";
+import type { TriggerNodeParams } from "../../../Domain/graph/nodes/TriggerNode.js";
 import { Stage } from "../../../Domain/graph/Stage.js";
 import { Job } from "../../../Domain/graph/Job.js";
 import { Node } from "../../../Domain/graph/Node.js";
@@ -79,6 +80,8 @@ export class GraphRepository implements IGraphRepository {
       id: doc._id.toString(),
       projectId: doc.projectId,
       name: doc.name,
+      status: doc.status ?? "draft",
+      trigger: doc.trigger as TriggerNodeParams | undefined,
       viewport: {
         x: doc.viewport.x,
         y: doc.viewport.y,
@@ -105,7 +108,6 @@ export class GraphRepository implements IGraphRepository {
               }
             : {}),
           steps: j.steps.map((n) => this.decryptNode(n)),
-          stepEdges: j.stepEdges.map((e) => this.mapEdge(e)),
         })),
       })),
       stageEdges: (doc.stageEdges ?? []).map((e) => this.mapEdge(e)),
@@ -153,12 +155,13 @@ export class GraphRepository implements IGraphRepository {
   async create(
     projectId: string,
     name: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { viewport: Viewport; trigger?: TriggerNodeParams; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph> {
     const encryptedStages = data.stages.map((s) => this.encryptStage(s));
     const doc = new GraphModel({
       projectId,
       name,
+      trigger: data.trigger,
       viewport: data.viewport,
       stages: encryptedStages,
       stageEdges: data.stageEdges,
@@ -169,12 +172,12 @@ export class GraphRepository implements IGraphRepository {
 
   async update(
     id: string,
-    data: { viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
   ): Promise<Graph> {
     const encryptedStages = data.stages.map((s) => this.encryptStage(s));
     const doc = await GraphModel.findByIdAndUpdate(
       id,
-      { viewport: data.viewport, stages: encryptedStages, stageEdges: data.stageEdges },
+      { status: data.status, trigger: data.trigger, viewport: data.viewport, stages: encryptedStages, stageEdges: data.stageEdges },
       { new: true },
     );
     if (!doc) throw new Error(`Pipeline not found for id=${id}`);

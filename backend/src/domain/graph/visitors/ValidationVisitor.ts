@@ -10,7 +10,6 @@
  *   if (!visitor.isValid()) throw new ValidationError(visitor.getErrors());
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
-import type { TriggerNode } from "../nodes/TriggerNode.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
 import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
@@ -39,16 +38,10 @@ export class ValidationVisitor implements INodeVisitor {
   }
 
   /**
-   * Call this after visiting all nodes to enforce graph-level constraints
-   * (e.g. exactly one trigger).
+   * Call this after visiting all nodes to enforce graph-level constraints.
    */
   validateGraphConstraints(): void {
-    if (this.triggerCount === 0) {
-      this._errors.push("Graph must contain at least one Trigger node.");
-    }
-    if (this.triggerCount > 1) {
-      this._errors.push(`Graph must contain exactly one Trigger node, found ${this.triggerCount}.`);
-    }
+    // Trigger is now validated at pipeline level in GraphService, not here.
   }
 
   validatePipeline(stages: Stage[], stageEdges: Edge[]): void {
@@ -89,24 +82,6 @@ export class ValidationVisitor implements INodeVisitor {
   }
 
   // ── visit methods ────────────────────────────────────────────────────────────
-
-  visitTrigger(node: TriggerNode): void {
-    this.triggerCount++;
-    this.require(node.id, "triggerParams.triggerType", node.triggerParams?.triggerType);
-
-    if (node.triggerParams?.triggerType === "schedule") {
-      this.require(node.id, "triggerParams.schedule", node.triggerParams.schedule);
-    }
-    if (
-      (node.triggerParams?.triggerType === "push" ||
-        node.triggerParams?.triggerType === "pull_request") &&
-      !node.triggerParams.branches?.length
-    ) {
-      this._errors.push(
-        `Node "${node.id}": at least one branch pattern is required for "${node.triggerParams.triggerType}" trigger.`,
-      );
-    }
-  }
 
   visitShellCommand(node: ShellCommandNode): void {
     this.require(node.id, "shellParams.shell", node.shellParams?.shell);
