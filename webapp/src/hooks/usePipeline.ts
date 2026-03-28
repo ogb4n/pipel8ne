@@ -1090,10 +1090,12 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       setTimeout(() => setSavedOk(false), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
+      // Revert local status to match actual DB state so the badge doesn't lie
+      setPipelineStatus(pipeline?.status ?? "draft");
     } finally {
       setStatus("idle");
     }
-  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges]);
+  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges, pipeline]);
 
   // ── exportToYaml ─────────────────────────────────────────────────────────────
   const exportToYaml = useCallback(

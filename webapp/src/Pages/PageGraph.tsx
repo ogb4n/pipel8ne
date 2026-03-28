@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { usePipeline } from "../hooks/usePipeline";
+import type { TriggerType } from "../Api/types";
 import { nodeTypes } from "../Components/Graph/nodeTypes";
 import { NodeConfigPanel } from "../Components/Graph/NodeConfigPanel";
 import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
@@ -35,6 +36,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
 
     const {
         pipeline, pipelineStatus, setPipelineStatus,
+        pipelineTrigger, setPipelineTrigger,
         nodes, edges, status, error, savedOk,
         selectedNodeId, activeStageId, activeJobId,
         onNodesChange, onEdgesChange, onConnect, onNodeDragStart, onNodeDrag, onNodeDragStop,
@@ -45,6 +47,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     } = usePipeline(projectId, pipelineId);
 
     const [exportFormat, setExportFormat] = useState<"github" | "gitlab" | "azure">("github");
+    const [triggerPanelOpen, setTriggerPanelOpen] = useState(false);
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
     const formatLabels: Record<"github" | "gitlab" | "azure", string> = {
@@ -129,6 +132,174 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                             </svg>
                             Sauvegardé
                         </span>
+                    )}
+                    {/* Trigger config button — pipeline level only */}
+                    {isPipelineView && (
+                        <div className="relative">
+                            {triggerPanelOpen && (
+                                <div className="fixed inset-0 z-10" onClick={() => setTriggerPanelOpen(false)} />
+                            )}
+                            <button
+                                onClick={() => setTriggerPanelOpen((o) => !o)}
+                                title="Configurer le trigger"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    padding: "5px 10px",
+                                    borderRadius: 6,
+                                    border: pipelineTrigger
+                                        ? "1px solid rgba(99,102,241,0.4)"
+                                        : "1px solid rgba(255,255,255,0.08)",
+                                    background: pipelineTrigger
+                                        ? "rgba(99,102,241,0.12)"
+                                        : "rgba(255,255,255,0.04)",
+                                    color: pipelineTrigger
+                                        ? "rgba(165,180,252,0.9)"
+                                        : "rgba(180,180,200,0.55)",
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                                </svg>
+                                {pipelineTrigger ? pipelineTrigger.triggerType : "Trigger"}
+                            </button>
+                            {triggerPanelOpen && (
+                                <div style={{
+                                    position: "absolute",
+                                    right: 0,
+                                    top: "calc(100% + 6px)",
+                                    zIndex: 20,
+                                    width: 280,
+                                    borderRadius: 10,
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: "#1c1c26",
+                                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                                    padding: "14px 16px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 12,
+                                }}>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(200,200,220,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
+                                        Trigger
+                                    </p>
+                                    {/* Type selector */}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                        <label style={{ fontSize: 11, color: "rgba(180,180,200,0.6)" }}>Type</label>
+                                        <select
+                                            value={pipelineTrigger?.triggerType ?? ""}
+                                            onChange={(e) => {
+                                                const t = e.target.value as TriggerType;
+                                                if (!t) { setPipelineTrigger(undefined); return; }
+                                                setPipelineTrigger({ triggerType: t, branches: t === "push" || t === "pull_request" ? ["main"] : undefined });
+                                            }}
+                                            style={{
+                                                background: "#111118",
+                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                borderRadius: 6,
+                                                color: "rgba(220,220,240,0.85)",
+                                                fontSize: 12,
+                                                padding: "5px 8px",
+                                                outline: "none",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            <option value="">— Aucun —</option>
+                                            <option value="push">Push</option>
+                                            <option value="pull_request">Pull Request</option>
+                                            <option value="schedule">Schedule (cron)</option>
+                                            <option value="tag">Tag</option>
+                                            <option value="manual">Manuel (workflow_dispatch)</option>
+                                        </select>
+                                    </div>
+                                    {/* Branches — push / pull_request */}
+                                    {(pipelineTrigger?.triggerType === "push" || pipelineTrigger?.triggerType === "pull_request") && (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                            <label style={{ fontSize: 11, color: "rgba(180,180,200,0.6)" }}>
+                                                Branches <span style={{ opacity: 0.5 }}>(séparées par des virgules)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={(pipelineTrigger.branches ?? []).join(", ")}
+                                                onChange={(e) => {
+                                                    const branches = e.target.value.split(",").map((b) => b.trim()).filter(Boolean);
+                                                    setPipelineTrigger({ ...pipelineTrigger, branches });
+                                                }}
+                                                placeholder="main, develop"
+                                                style={{
+                                                    background: "#111118",
+                                                    border: "1px solid rgba(255,255,255,0.1)",
+                                                    borderRadius: 6,
+                                                    color: "rgba(220,220,240,0.85)",
+                                                    fontSize: 12,
+                                                    padding: "5px 8px",
+                                                    outline: "none",
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                    {/* Schedule — cron */}
+                                    {pipelineTrigger?.triggerType === "schedule" && (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                            <label style={{ fontSize: 11, color: "rgba(180,180,200,0.6)" }}>
+                                                Cron <span style={{ opacity: 0.5 }}>(ex: 0 2 * * *)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={pipelineTrigger.schedule ?? ""}
+                                                onChange={(e) => setPipelineTrigger({ ...pipelineTrigger, schedule: e.target.value })}
+                                                placeholder="0 2 * * *"
+                                                style={{
+                                                    background: "#111118",
+                                                    border: "1px solid rgba(255,255,255,0.1)",
+                                                    borderRadius: 6,
+                                                    color: "rgba(220,220,240,0.85)",
+                                                    fontSize: 12,
+                                                    padding: "5px 8px",
+                                                    outline: "none",
+                                                    fontFamily: "monospace",
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                    {/* Tags */}
+                                    {pipelineTrigger?.triggerType === "tag" && (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                            <label style={{ fontSize: 11, color: "rgba(180,180,200,0.6)" }}>
+                                                Patterns de tags <span style={{ opacity: 0.5 }}>(séparés par des virgules)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={(pipelineTrigger.tags ?? []).join(", ")}
+                                                onChange={(e) => {
+                                                    const tags = e.target.value.split(",").map((t) => t.trim()).filter(Boolean);
+                                                    setPipelineTrigger({ ...pipelineTrigger, tags });
+                                                }}
+                                                placeholder="v*"
+                                                style={{
+                                                    background: "#111118",
+                                                    border: "1px solid rgba(255,255,255,0.1)",
+                                                    borderRadius: 6,
+                                                    color: "rgba(220,220,240,0.85)",
+                                                    fontSize: 12,
+                                                    padding: "5px 8px",
+                                                    outline: "none",
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                    {pipelineTrigger?.triggerType === "manual" && (
+                                        <p style={{ fontSize: 11, color: "rgba(150,150,170,0.7)", margin: 0 }}>
+                                            Le pipeline sera déclenché manuellement via workflow_dispatch.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
                     {/* Draft / Active toggle */}
                     <button

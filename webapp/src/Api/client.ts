@@ -102,6 +102,18 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   }
 
   if (res.status === 204) return undefined as T;
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // A successful non-JSON response on a mutating request means the API route
+    // doesn't exist (e.g. the backend returned the SPA's index.html).
+    if (init.method && init.method !== "GET") {
+      throw new Error(`Réponse inattendue du serveur (${res.status} non-JSON) — le backend est-il à jour ?`);
+    }
+    return undefined as T;
+  }
+
   const body = (await res.json()) as { message?: string };
   if (!res.ok) throw new Error(body?.message ?? `HTTP ${res.status}`);
   return body as T;
@@ -181,6 +193,15 @@ export const api = {
       }),
     delete: (projectId: string, pipelineId: string) =>
       request<void>(`/api/projects/${projectId}/pipelines/${pipelineId}`, { method: "DELETE" }),
+    pushToRepo: (
+      projectId: string,
+      pipelineId: string,
+      body: { branch?: string; commitMessage?: string },
+    ) =>
+      request<{ filePath: string; commitUrl: string }>(
+        `/api/projects/${projectId}/pipelines/${pipelineId}/push`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
   },
   credentials: {
     list: () => request<Credential[]>("/api/credentials"),

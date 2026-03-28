@@ -16,6 +16,7 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
     const [provider, setProvider] = useState("github");
     const [label, setLabel] = useState("");
     const [labelTouched, setLabelTouched] = useState(false);
+    const [orgName, setOrgName] = useState("");
     const [value, setValue] = useState("");
     const [showValue, setShowValue] = useState(false);
     const [creating, setCreating] = useState(false);
@@ -29,6 +30,7 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
     useEffect(() => {
         if (!labelTouched) setLabel(config.labelSuggestion);
         setValue("");
+        setOrgName("");
         setShowValue(false);
         setValidationError(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,7 +38,8 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
 
     const handleValueChange = (v: string) => {
         setValue(v);
-        if (config.validationPattern && v.length > 0 && !config.validationPattern.test(v)) {
+        const trimmed = v.trim();
+        if (config.validationPattern && trimmed.length > 0 && !config.validationPattern.test(trimmed)) {
             setValidationError(config.validationHint ?? "Format invalide");
         } else {
             setValidationError(null);
@@ -49,7 +52,10 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
         setCreating(true);
         setError(null);
         try {
-            await api.credentials.create({ provider, label, value });
+            const finalValue = config.requiresOrg && orgName.trim()
+                ? `${orgName.trim()}:${value.trim()}`
+                : value.trim();
+            await api.credentials.create({ provider, label, value: finalValue });
             onCreated();
             onClose();
         } catch (err) {
@@ -134,6 +140,25 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
                     </p>
                 </div>
 
+                {/* Champ organisation (Azure DevOps uniquement) */}
+                {config.requiresOrg && (
+                    <div>
+                        <label className={labelCls}>{config.orgLabel ?? "Organisation"}</label>
+                        <input
+                            type="text"
+                            required
+                            value={orgName}
+                            onChange={(e) => setOrgName(e.target.value)}
+                            placeholder={config.orgPlaceholder ?? "my-organization"}
+                            className={inputCls}
+                            autoComplete="off"
+                        />
+                        {config.orgHint && (
+                            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">{config.orgHint}</p>
+                        )}
+                    </div>
+                )}
+
                 {/* Valeur secrète — label, placeholder et hint viennent du registre */}
                 <div>
                     <label className={labelCls}>{config.valueLabel}</label>
@@ -181,7 +206,7 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
                     <button type="button" onClick={onClose} className="flex-1 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm transition-colors">
                         Annuler
                     </button>
-                    <button type="submit" disabled={creating || !label.trim() || !value.trim() || !!validationError} className="flex-1 py-2 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                    <button type="submit" disabled={creating || !label.trim() || !value.trim() || !!validationError || (!!config.requiresOrg && !orgName.trim())} className="flex-1 py-2 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
                         {creating ? "Création..." : "Créer"}
                     </button>
                 </div>
