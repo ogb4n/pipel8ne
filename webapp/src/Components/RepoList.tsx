@@ -58,11 +58,14 @@ const RepoList: React.FC<RepoListProps> = ({
   onSelectRepo,
 }) => {
   const [activeTab, setActiveTab] = useState<GitProvider | "all">("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "public" | "private">("all");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
     let list = activeTab === "all" ? repos : repos.filter((r) => r.provider === activeTab);
+    if (visibilityFilter === "public") list = list.filter((r) => !r.isPrivate);
+    if (visibilityFilter === "private") list = list.filter((r) => r.isPrivate);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -72,7 +75,7 @@ const RepoList: React.FC<RepoListProps> = ({
       );
     }
     return list;
-  }, [repos, activeTab, search]);
+  }, [repos, activeTab, visibilityFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -81,6 +84,10 @@ const RepoList: React.FC<RepoListProps> = ({
   // Reset page on filter change
   const changeTab = (tab: GitProvider | "all") => {
     setActiveTab(tab);
+    setPage(0);
+  };
+  const changeVisibility = (v: "all" | "public" | "private") => {
+    setVisibilityFilter(v);
     setPage(0);
   };
 
@@ -178,37 +185,61 @@ const RepoList: React.FC<RepoListProps> = ({
       </div>
 
       {/* Tabs */}
-      {connectedProviders.length > 1 && (
-        <div className="flex items-center gap-1 mb-4">
-          <button
-            onClick={() => changeTab("all")}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeTab === "all"
+      <div className="flex items-center gap-1 mb-4 flex-wrap">
+        {connectedProviders.length > 1 && (
+          <>
+            <button
+              onClick={() => changeTab("all")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === "all"
                 ? "bg-accent-500 text-white"
                 : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-            }`}
-          >
-            Tous ({repos.length})
-          </button>
-          {connectedProviders.map((p) => {
-            const count = repos.filter((r) => r.provider === p).length;
-            return (
-              <button
-                key={p}
-                onClick={() => changeTab(p)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === p
+                }`}
+            >
+              Tous ({repos.length})
+            </button>
+            {connectedProviders.map((p) => {
+              const count = repos.filter((r) => r.provider === p).length;
+              return (
+                <button
+                  key={p}
+                  onClick={() => changeTab(p)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === p
                     ? "bg-accent-500 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    }`}
+                >
+                  <ProviderIcon provider={p} size={12} />
+                  {PROVIDER_LABEL[p]} ({count})
+                </button>
+              );
+            })}
+            <span className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+          </>
+        )}
+
+        {/* Visibility filters */}
+        {(["all", "public", "private"] as const).map((v) => {
+          const label = v === "all" ? "Tous" : v === "public" ? "Public" : "Privé";
+          const count =
+            v === "all"
+              ? ''
+              : v === "public"
+                ? `(${repos.filter((r) => !r.isPrivate).length})`
+                : `(${repos.filter((r) => r.isPrivate).length})`;
+          return (
+            <button
+              key={v}
+              onClick={() => changeVisibility(v)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${visibilityFilter === v
+                ? "bg-zinc-700 text-white dark:bg-zinc-200 dark:text-zinc-900"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 }`}
-              >
-                <ProviderIcon provider={p} size={12} />
-                {PROVIDER_LABEL[p]} ({count})
-              </button>
-            );
-          })}
-        </div>
-      )}
+            >
+              {label} {count}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Repo grid */}
       {filtered.length === 0 ? (
@@ -238,11 +269,10 @@ const RepoList: React.FC<RepoListProps> = ({
                         {repo.fullName}
                       </p>
                       <span
-                        className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          repo.isPrivate
-                            ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                            : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
-                        }`}
+                        className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${repo.isPrivate
+                          ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                          : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          }`}
                       >
                         {repo.isPrivate ? "privé" : "public"}
                       </span>
@@ -288,11 +318,10 @@ const RepoList: React.FC<RepoListProps> = ({
                   <button
                     key={i}
                     onClick={() => setPage(i)}
-                    className={`w-7 h-7 rounded-md text-xs font-medium transition-colors ${
-                      i === currentPage
-                        ? "bg-accent-500 text-white"
-                        : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    }`}
+                    className={`w-7 h-7 rounded-md text-xs font-medium transition-colors ${i === currentPage
+                      ? "bg-accent-500 text-white"
+                      : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      }`}
                   >
                     {i + 1}
                   </button>

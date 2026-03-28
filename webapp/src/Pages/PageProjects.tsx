@@ -221,8 +221,16 @@ const PageProjects: React.FC = () => {
         }}
       />
       <div className="max-w-5xl mx-auto py-10 px-5">
+        {/* ── Section Dépôts Git ─────────────────────────────── */}
+        <RepoList
+          repos={repos}
+          loading={reposLoading}
+          connectedProviders={connectedProviders}
+          onSelectRepo={openCreateFromRepo}
+        />
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 mt-8">
           <div>
             <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Projets</h1>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
@@ -316,14 +324,6 @@ const PageProjects: React.FC = () => {
             {error}
           </div>
         )}
-
-        {/* ── Section Dépôts Git ─────────────────────────────── */}
-        <RepoList
-          repos={repos}
-          loading={reposLoading}
-          connectedProviders={connectedProviders}
-          onSelectRepo={openCreateFromRepo}
-        />
 
         {/* ── Section Projets ────────────────────────────────── */}
 
