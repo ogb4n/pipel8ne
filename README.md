@@ -143,4 +143,4 @@ Pull requests are welcome. For significant changes, open an issue first to discu
 
 ## License
 
-[MIT](LICENSE)
+[Sustainable Use License](LICENSE.md)
