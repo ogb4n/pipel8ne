@@ -26,6 +26,11 @@ export interface ProviderConfig {
   valueHint: string;
   validationPattern?: RegExp;
   validationHint?: string;
+  /** When true, show an extra "Organisation" input before the token field */
+  requiresOrg?: boolean;
+  orgLabel?: string;
+  orgPlaceholder?: string;
+  orgHint?: string;
 }
 
 export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
@@ -39,7 +44,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valuePlaceholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
     valueHint:
       "Générez un token sur github.com → Settings → Developer settings → Personal access tokens.",
-    validationPattern: /^(ghp_|github_pat_)[A-Za-z0-9_]+$/,
+    validationPattern: /^(ghp_|github_pat_)\S+$/,
     validationHint: "Le token doit commencer par ghp_ ou github_pat_",
   },
   gitlab: {
@@ -50,7 +55,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valueLabel: "Access Token",
     valuePlaceholder: "glpat-xxxxxxxxxxxxxxxxxxxx",
     valueHint: "Générez un token sur gitlab.com → Preferences → Access Tokens.",
-    validationPattern: /^glpat-[A-Za-z0-9_-]+$/,
+    validationPattern: /^glpat-\S+$/,
     validationHint: "Le token doit commencer par glpat-",
   },
   dockerhub: {
@@ -63,7 +68,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valuePlaceholder: "dckr_pat_xxxxxxxxxxxxxxxxxxxx",
     valueHint:
       "Créez un token sur hub.docker.com → Account Settings → Security → New Access Token.",
-    validationPattern: /^dckr_pat_[A-Za-z0-9_-]+$/,
+    validationPattern: /^dckr_pat_\S+$/,
     validationHint: "Le token doit commencer par dckr_pat_",
   },
   aws: {
@@ -96,6 +101,22 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valuePlaceholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     valueHint: "Créez un App Registration dans Azure AD, puis générez un Client Secret.",
   },
+  azure_devops: {
+    label: "Azure DevOps",
+    description:
+      "Personal Access Token Azure DevOps pour accéder aux repositories Git. Les PATs scopés à une organisation sont supportés.",
+    docsUrl: "https://dev.azure.com/_usersSettings/tokens",
+    labelSuggestion: "Mon token Azure DevOps",
+    valueLabel: "Personal Access Token",
+    valuePlaceholder: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    valueHint:
+      "Créez un PAT sur dev.azure.com → User Settings → Personal Access Tokens. Scopes requis : Code (Read & Write), Project and Team (Read).",
+    requiresOrg: true,
+    orgLabel: "Organisation Azure DevOps",
+    orgPlaceholder: "mon-organisation",
+    orgHint:
+      "Nom de l'organisation visible dans l'URL : dev.azure.com/{organisation}",
+  },
   npm: {
     label: "npm",
     description:
@@ -105,7 +126,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     valueLabel: "Access Token",
     valuePlaceholder: "npm_xxxxxxxxxxxxxxxxxxxx",
     valueHint: "Générez un token sur npmjs.com → Access Tokens → Generate New Token.",
-    validationPattern: /^npm_[A-Za-z0-9]+$/,
+    validationPattern: /^npm_\S+$/,
     validationHint: "Le token doit commencer par npm_",
   },
   openai: {
@@ -149,6 +170,7 @@ export const PROVIDER_ORDER = [
   "aws",
   "gcp",
   "azure",
+  "azure_devops",
   "npm",
   "openai",
   "anthropic",

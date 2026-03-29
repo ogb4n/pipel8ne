@@ -3,19 +3,21 @@
  * Toutes les routes sont protégées par JWT.
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../domain/errors.js";
+import { NotFoundError, ForbiddenError, ValidationError } from "../../../domain/errors.js";
 import {
   gitConnectionSchema,
   gitConnectionListSchema,
   oauthCallbackBodySchema,
   oauthConfigSchema,
   gitRepositoryListSchema,
+  connectWithCredentialBodySchema,
   errorSchema,
 } from "./git-connections.schemas.js";
 
 function handleDomainError(err: unknown, reply: FastifyReply) {
   if (err instanceof NotFoundError) return reply.status(404).send({ message: err.message });
   if (err instanceof ForbiddenError) return reply.status(403).send({ message: err.message });
+  if (err instanceof ValidationError) return reply.status(400).send({ message: err.message });
   throw err;
 }
 
@@ -111,6 +113,39 @@ export default async function gitConnectionRoutes(app: FastifyInstance) {
         if (err instanceof Error && err.message.includes("OAuth")) {
           return reply.status(400).send({ message: err.message });
         }
+        return handleDomainError(err, reply);
+      }
+    },
+  );
+
+  /**
+   * POST /api/git-connections/connect-with-credential
+   * Connecte un provider Git via un Personal Access Token stocké dans les credentials.
+   */
+  app.post<{ Body: { credentialId: string } }>(
+    "/api/git-connections/connect-with-credential",
+    {
+      schema: {
+        tags: ["git-connections"],
+        summary: "Connecte un provider Git via un Personal Access Token stocké",
+        security: [{ bearerAuth: [] }],
+        body: connectWithCredentialBodySchema,
+        response: {
+          201: gitConnectionSchema,
+          400: errorSchema,
+          403: errorSchema,
+          404: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const connection = await app.gitConnectionService.connectWithCredential(
+          request.user.sub,
+          request.body.credentialId,
+        );
+        return reply.status(201).send(connection);
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
