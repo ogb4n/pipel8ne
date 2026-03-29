@@ -4,6 +4,8 @@ pipel8ne is an open-source visual CI/CD pipeline builder — think n8n, but buil
 
 Design your pipelines with a drag-and-drop graph editor, connect directly to your Git platform, and push changes to your repositories without ever touching a YAML file manually.
 
+> 📖 **Full documentation:** [pipel8ne.docs.ogb4n.com](https://pipel8ne.docs.ogb4n.com)
+
 ## Vision
 
 Most CI/CD tools force you to write and maintain configuration files by hand. pipel8ne takes a different approach: pipelines are built visually, stored in the platform, and synchronized directly with your repositories. The goal is to bridge the gap between visual pipeline design and the actual workflow files that live in your codebase — with direct integrations to GitHub, GitLab, and Azure DevOps.
@@ -48,7 +50,7 @@ Most CI/CD tools force you to write and maintain configuration files by hand. pi
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/pipel8ne.git
+   git clone https://github.com/ogb4n/pipel8ne.git
    cd pipel8ne
    ```
 
@@ -130,19 +132,23 @@ The frontend dev server starts at `http://localhost:5173` and proxies API reques
 
 ## Documentation
 
-- [Conventions & pratiques](docs/conventions.md) — naming, architecture rules, coding patterns, security
-- [Project state](docs/project-state.md) — what's built, what's planned, current data model, all routes
-- [Architecture](docs/architecture.md) — backend hexagonal architecture, frontend structure, data flow
-- [Pipeline concepts](docs/pipeline-concepts.md) — stages, jobs, steps, node types, YAML export
-- [API reference](docs/api.md) — all REST endpoints
-- [Development guide](docs/development.md) — local setup, env vars, scripts
-- [Deployment](docs/deployment.md) — Docker, reverse proxy, production checklist
-- [Contributing](docs/contributing.md) — how to add features, doc maintenance rules
+The full documentation is available at **[pipel8ne.docs.ogb4n.com](https://pipel8ne.docs.ogb4n.com)**.
+
+| Topic | Online docs | Source |
+| ----- | ----------- | ------ |
+| Architecture | [Architecture](https://pipel8ne.docs.ogb4n.com/architecture) | [docs/architecture.md](docs/architecture.md) |
+| Pipeline concepts | [Pipeline concepts](https://pipel8ne.docs.ogb4n.com/pipeline-concepts) | [docs/pipeline-concepts.md](docs/pipeline-concepts.md) |
+| API reference | [API reference](https://pipel8ne.docs.ogb4n.com/api) | [docs/api.md](docs/api.md) |
+| Development guide | [Development guide](https://pipel8ne.docs.ogb4n.com/development) | [docs/development.md](docs/development.md) |
+| Deployment | [Deployment](https://pipel8ne.docs.ogb4n.com/deployment) | [docs/deployment.md](docs/deployment.md) |
+| Contributing | [Contributing](https://pipel8ne.docs.ogb4n.com/contributing) | [docs/contributing.md](docs/contributing.md) |
 
 ## Contributing
 
 Pull requests are welcome. For significant changes, open an issue first to discuss what you'd like to change.
 
+Read the [contributing guide](https://pipel8ne.docs.ogb4n.com/contributing) before submitting a PR.
+
 ## License
 
-[MIT](LICENSE)
+[Sustainable Use License](LICENSE.md)
