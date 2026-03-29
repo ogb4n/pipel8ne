@@ -2,6 +2,16 @@
  * Schémas JSON utilisés par les routes Project (Fastify / OpenAPI).
  */
 
+const gitRepositorySchema = {
+  type: "object",
+  properties: {
+    cloneUrl: { type: "string" },
+    fullName: { type: "string" },
+    defaultBranch: { type: "string" },
+    provider: { type: "string" },
+  },
+} as const;
+
 export const projectSchema = {
   type: "object",
   properties: {
@@ -12,6 +22,7 @@ export const projectSchema = {
     visibility: { type: "string", enum: ["private", "public"] },
     ownerId: { type: "string" },
     lastModified: { type: "string" },
+    gitRepository: gitRepositorySchema,
   },
 } as const;
 
@@ -28,6 +39,17 @@ export const createProjectBodySchema = {
     path: { type: "string", minLength: 1 },
     provider: { type: "string", minLength: 1 },
     visibility: { type: "string", enum: ["private", "public"] },
+    gitRepository: {
+      type: "object",
+      required: ["cloneUrl", "fullName", "defaultBranch", "provider"],
+      properties: {
+        cloneUrl: { type: "string", minLength: 1 },
+        fullName: { type: "string", minLength: 1 },
+        defaultBranch: { type: "string", minLength: 1 },
+        provider: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
   },
   additionalProperties: false,
 } as const;

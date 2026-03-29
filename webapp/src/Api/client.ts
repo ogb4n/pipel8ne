@@ -11,6 +11,10 @@ import type {
   ApiKey,
   CreateApiKeyResponse,
   User,
+  GitConnection,
+  GitRepository,
+  OAuthConfig,
+  GitProvider,
 } from "./types";
 
 const BASE = "";
@@ -98,6 +102,18 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   }
 
   if (res.status === 204) return undefined as T;
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // A successful non-JSON response on a mutating request means the API route
+    // doesn't exist (e.g. the backend returned the SPA's index.html).
+    if (init.method && init.method !== "GET") {
+      throw new Error(`Réponse inattendue du serveur (${res.status} non-JSON) — le backend est-il à jour ?`);
+    }
+    return undefined as T;
+  }
+
   const body = (await res.json()) as { message?: string };
   if (!res.ok) throw new Error(body?.message ?? `HTTP ${res.status}`);
   return body as T;
@@ -139,6 +155,12 @@ export const api = {
       path: string;
       provider: string;
       visibility?: ProjectVisibility;
+      gitRepository?: {
+        cloneUrl: string;
+        fullName: string;
+        defaultBranch: string;
+        provider: string;
+      };
     }) => request<Project>("/api/projects", { method: "POST", body: JSON.stringify(data) }),
     update: (
       id: string,
@@ -171,6 +193,15 @@ export const api = {
       }),
     delete: (projectId: string, pipelineId: string) =>
       request<void>(`/api/projects/${projectId}/pipelines/${pipelineId}`, { method: "DELETE" }),
+    pushToRepo: (
+      projectId: string,
+      pipelineId: string,
+      body: { branch?: string; commitMessage?: string },
+    ) =>
+      request<{ filePath: string; commitUrl: string }>(
+        `/api/projects/${projectId}/pipelines/${pipelineId}/push`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
   },
   credentials: {
     list: () => request<Credential[]>("/api/credentials"),
@@ -206,5 +237,22 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+  },
+  gitConnections: {
+    oauthConfig: () => request<OAuthConfig>("/api/git-connections/oauth/config"),
+    oauthCallback: (provider: GitProvider, code: string) =>
+      request<GitConnection>("/api/git-connections/oauth/callback", {
+        method: "POST",
+        body: JSON.stringify({ provider, code }),
+      }),
+    connectWithCredential: (credentialId: string) =>
+      request<GitConnection>("/api/git-connections/connect-with-credential", {
+        method: "POST",
+        body: JSON.stringify({ credentialId }),
+      }),
+    list: () => request<GitConnection[]>("/api/git-connections"),
+    delete: (id: string) => request<void>(`/api/git-connections/${id}`, { method: "DELETE" }),
+    listRepos: (connectionId: string) =>
+      request<GitRepository[]>(`/api/git-connections/${connectionId}/repos`),
   },
 };

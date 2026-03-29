@@ -21,6 +21,14 @@ export interface AuthTokens {
   user: User;
 }
 export type ProjectVisibility = "private" | "public";
+
+export interface ProjectGitRepository {
+  cloneUrl: string;
+  fullName: string;
+  defaultBranch: string;
+  provider: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -29,6 +37,7 @@ export interface Project {
   visibility: ProjectVisibility;
   ownerId: string;
   lastModified: string;
+  gitRepository?: ProjectGitRepository;
 }
 // ── Node type discriminator ─────────────────────────────────────────────────
 export type NodeType =
@@ -171,6 +180,37 @@ export interface ApiKey {
 
 export interface CreateApiKeyResponse extends ApiKey {
   rawKey: string; // returned once only
+}
+
+// ── Git Connections ─────────────────────────────────────────────────────────
+export type GitProvider = "github" | "gitlab" | "azure_devops";
+
+export interface GitConnection {
+  id: string;
+  userId: string;
+  provider: GitProvider;
+  providerUsername: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GitRepository {
+  id: string;
+  name: string;
+  fullName: string;
+  description: string | null;
+  url: string;
+  cloneUrl: string;
+  defaultBranch: string;
+  isPrivate: boolean;
+  updatedAt: string;
+}
+
+export interface OAuthConfig {
+  github: { enabled: boolean; authUrl: string };
+  gitlab: { enabled: boolean; authUrl: string };
+  azure_devops: { enabled: boolean; authUrl: string };
 }
 
 export interface NodeParams {

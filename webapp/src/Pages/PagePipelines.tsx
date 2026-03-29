@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../Api/client";
-import { Graph } from "../Api/types";
+import { Graph, Project } from "../Api/types";
 
 const inputCls = "w-full px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition";
 const labelCls = "block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider";
@@ -11,6 +11,7 @@ const PagePipelines: React.FC = () => {
     const navigate = useNavigate();
 
     const [pipelines, setPipelines] = useState<Graph[]>([]);
+    const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -18,12 +19,24 @@ const PagePipelines: React.FC = () => {
     const [newName, setNewName] = useState("");
     const [creating, setCreating] = useState(false);
 
-    const fetchPipelines = async () => {
+    // Push modal state
+    const [pushTarget, setPushTarget] = useState<Graph | null>(null);
+    const [pushBranch, setPushBranch] = useState("");
+    const [pushMessage, setPushMessage] = useState("");
+    const [pushing, setPushing] = useState(false);
+    const [pushResult, setPushResult] = useState<{ filePath: string; commitUrl: string } | null>(null);
+    const [pushError, setPushError] = useState<string | null>(null);
+
+    const fetchData = async () => {
         if (!projectId) return;
         try {
             setLoading(true);
-            const data = await api.pipelines.listByProject(projectId);
+            const [data, proj] = await Promise.all([
+                api.pipelines.listByProject(projectId),
+                api.projects.getById(projectId),
+            ]);
             setPipelines(data);
+            setProject(proj);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Erreur de chargement");
         } finally {
@@ -31,9 +44,9 @@ const PagePipelines: React.FC = () => {
         }
     };
 
-    useEffect(() => { void fetchPipelines(); }, [projectId]);
+    useEffect(() => { void fetchData(); }, [projectId]);
 
-    const handleCreate = async (e: React.FormEvent) => {
+    const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!projectId || !newName.trim()) return;
         setCreating(true);
@@ -54,11 +67,44 @@ const PagePipelines: React.FC = () => {
         if (!window.confirm("Supprimer cette pipeline ?")) return;
         try {
             await api.pipelines.delete(projectId, pipelineId);
-            await fetchPipelines();
+            await fetchData();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Erreur de suppression");
         }
     };
+
+    const openPushModal = (pipeline: Graph) => {
+        setPushTarget(pipeline);
+        setPushBranch(project?.gitRepository?.defaultBranch ?? "main");
+        setPushMessage(`ci: add ${pipeline.name} workflow`);
+        setPushResult(null);
+        setPushError(null);
+    };
+
+    const closePushModal = () => {
+        setPushTarget(null);
+        setPushResult(null);
+        setPushError(null);
+    };
+
+    const handlePush = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!projectId || !pushTarget) return;
+        setPushing(true);
+        try {
+            const result = await api.pipelines.pushToRepo(projectId, pushTarget.id, {
+                branch: pushBranch,
+                commitMessage: pushMessage,
+            });
+            setPushResult(result);
+        } catch (err) {
+            setPushError(err instanceof Error ? err.message : "Erreur lors du push");
+        } finally {
+            setPushing(false);
+        }
+    };
+
+    const hasLinkedRepo = Boolean(project?.gitRepository);
 
     return (
         <div className="max-w-3xl mx-auto py-10 px-5">
@@ -93,7 +139,7 @@ const PagePipelines: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal */}
+            {/* Create modal */}
             {showForm && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
                     <form
@@ -137,6 +183,101 @@ const PagePipelines: React.FC = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Push to repo modal */}
+            {pushTarget && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 w-full max-w-sm shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                Pousser vers le repo
+                            </h2>
+                            <button type="button" onClick={closePushModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 6 6 18M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {pushResult ? (
+                            <div className="space-y-3">
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    Pipeline poussée avec succès.
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono break-all">
+                                    {pushResult.filePath}
+                                </p>
+                                <a
+                                    href={pushResult.commitUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block text-xs text-accent-500 hover:underline break-all"
+                                >
+                                    Voir le fichier sur {project?.gitRepository?.provider} →
+                                </a>
+                                <button
+                                    onClick={closePushModal}
+                                    className="w-full mt-2 py-2 rounded-md bg-accent-500 hover:bg-accent-600 text-white text-sm font-medium transition-colors"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={(e) => { void handlePush(e); }} className="space-y-4">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Génère un fichier GitHub Actions et le pousse dans{" "}
+                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                        {project?.gitRepository?.fullName}
+                                    </span>
+                                </p>
+                                <div>
+                                    <label className={labelCls}>Branche</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={pushBranch}
+                                        onChange={(e) => setPushBranch(e.target.value)}
+                                        placeholder="main"
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Message de commit</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={pushMessage}
+                                        onChange={(e) => setPushMessage(e.target.value)}
+                                        placeholder="ci: add pipeline workflow"
+                                        className={inputCls}
+                                    />
+                                </div>
+                                {pushError && (
+                                    <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
+                                        {pushError}
+                                    </p>
+                                )}
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={closePushModal}
+                                        className="flex-1 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm transition-colors"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={pushing}
+                                        className="flex-1 py-2 rounded-md bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                                    >
+                                        {pushing ? "Push..." : "Pousser"}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -191,6 +332,15 @@ const PagePipelines: React.FC = () => {
                                 </p>
                             </div>
                             <div className="flex items-center gap-1 ml-4 shrink-0">
+                                {hasLinkedRepo && (
+                                    <button
+                                        onClick={() => openPushModal(p)}
+                                        title={`Pousser vers ${project?.gitRepository?.fullName}`}
+                                        className="px-2.5 py-1.5 rounded-md text-xs text-zinc-400 hover:text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-950/20 transition-colors"
+                                    >
+                                        Push
+                                    </button>
+                                )}
                                 <Link
                                     to={`/projects/${projectId}/pipelines/${p.id}`}
                                     className="px-3 py-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 hover:bg-accent-50 dark:hover:bg-accent-950/20 text-zinc-600 dark:text-zinc-300 hover:text-accent-500 dark:hover:text-accent-400 text-xs font-medium transition-colors"

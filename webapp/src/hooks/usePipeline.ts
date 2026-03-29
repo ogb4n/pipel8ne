@@ -237,7 +237,28 @@ const yamlValue = (val: unknown, indent: number): string => {
   }
   if (Array.isArray(val)) {
     if (val.length === 0) return "[]";
-    return "\n" + val.map((v) => `${pad}- ${yamlValue(v, indent + 1)}`).join("\n");
+    return (
+      "\n" +
+      val
+        .map((v) => {
+          if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+            const entries = Object.entries(v as Record<string, unknown>).filter(
+              ([, fv]) => fv !== undefined && fv !== null && fv !== "",
+            );
+            if (entries.length === 0) return `${pad}- {}`;
+            const innerPad = "  ".repeat(indent + 1);
+            return entries
+              .map(([k, fv], i) => {
+                const s = yamlValue(fv, indent + 2);
+                const line = s.startsWith("\n") ? `${k}:${s}` : `${k}: ${s}`;
+                return i === 0 ? `${pad}- ${line}` : `${innerPad}${line}`;
+              })
+              .join("\n");
+          }
+          return `${pad}- ${yamlValue(v, indent + 1)}`;
+        })
+        .join("\n")
+    );
   }
   if (typeof val === "object") {
     const entries = Object.entries(val as Record<string, unknown>).filter(
@@ -269,16 +290,268 @@ const buildJobNeedsMap = (stage: Stage): Record<string, string[]> => {
   return map;
 };
 
-const renderStep = (step: GraphNode): Record<string, unknown> => {
-  const entry: Record<string, unknown> = { id: step.id, name: step.data.label, type: step.type };
-  if (step.data.description) entry.description = step.data.description;
-  const baseParams = step.data.params?.baseParameters ?? {};
-  if (Object.keys(baseParams).length > 0) entry.params = baseParams;
-  if (Object.keys(step.data.env ?? {}).length > 0) entry.env = step.data.env;
-  const secretKeys = Object.keys(step.data.secrets ?? {});
-  if (secretKeys.length > 0) entry.secrets = secretKeys;
+// ── Per-platform step rendering ───────────────────────────────────────────────
+
+function buildDockerCommand(p: Record<string, unknown>): string {
+  const action = (p.action as string) ?? "build";
+  switch (action) {
+    case "build": {
+      const tags = Array.isArray(p.tags)
+        ? p.tags.map((t: unknown) => `-t ${t}`).join(" ")
+        : p.image
+          ? `-t ${p.image}`
+          : "";
+      const file = p.dockerfile ? `-f ${p.dockerfile}` : "";
+      const ctx = (p.buildContext as string) ?? ".";
+      return ["docker build", tags, file, ctx].filter(Boolean).join(" ");
+    }
+    case "push":
+      return `docker push ${(Array.isArray(p.tags) ? p.tags[0] : undefined) ?? p.image ?? "image"}`;
+    case "pull":
+      return `docker pull ${p.image ?? "image"}`;
+    case "run":
+      return `docker run ${p.image ?? "image"} ${p.command ?? ""}`.trim();
+    case "compose_up": {
+      const file = p.composeFile ? `-f ${p.composeFile}` : "";
+      return `docker compose ${file} up -d`.trim();
+    }
+    case "compose_down": {
+      const file = p.composeFile ? `-f ${p.composeFile}` : "";
+      return `docker compose ${file} down`.trim();
+    }
+    default:
+      return `docker ${action}`;
+  }
+}
+
+function buildGitCommand(p: Record<string, unknown>): string {
+  const action = (p.action as string) ?? "checkout";
+  switch (action) {
+    case "clone": {
+      const url = (p.repositoryUrl as string) ?? "<repo-url>";
+      const dir = p.directory ? ` ${p.directory}` : "";
+      const depth = p.depth ? ` --depth ${p.depth}` : "";
+      return `git clone${depth} ${url}${dir}`;
+    }
+    case "checkout":
+      return `git checkout ${p.ref ?? "main"}`;
+    case "pull":
+      return `git pull ${p.remote ?? "origin"} ${p.ref ?? ""}`.trim();
+    case "fetch":
+      return `git fetch ${p.remote ?? "origin"}`;
+    case "tag":
+      return `git tag ${p.tagName ?? "v1.0.0"}`;
+    case "push":
+      return `git push ${p.remote ?? "origin"} ${p.ref ?? ""}`.trim();
+    default:
+      return `git ${action}`;
+  }
+}
+
+function buildTestCommand(p: Record<string, unknown>): string {
+  if (p.command) return p.command as string;
+  const runner = p.runner as string;
+  const pattern = p.testPattern ? ` ${p.testPattern}` : "";
+  switch (runner) {
+    case "jest": return `npx jest${pattern}`;
+    case "vitest": return `npx vitest run${pattern}`;
+    case "pytest": return `pytest${pattern}`;
+    case "go_test": return "go test ./...";
+    case "cargo_test": return "cargo test";
+    case "dotnet_test": return "dotnet test";
+    default: return "# run tests";
+  }
+}
+
+function buildBuildCommand(p: Record<string, unknown>): string {
+  if (p.command) return p.command as string;
+  const tool = p.tool as string;
+  const target = (p.target as string) ?? "build";
+  switch (tool) {
+    case "npm": return `npm run ${target}`;
+    case "yarn": return `yarn ${target}`;
+    case "pnpm": return `pnpm run ${target}`;
+    case "maven": return `mvn ${target}`;
+    case "gradle": return `./gradlew ${target}`;
+    case "cargo": return `cargo ${target}`;
+    case "go": return "go build ./...";
+    case "dotnet": return "dotnet build";
+    case "make": return `make ${target}`;
+    default: return `# build with ${tool}`;
+  }
+}
+
+function buildDeployCommand(p: Record<string, unknown>): string {
+  const target = p.target as string;
+  switch (target) {
+    case "kubernetes": {
+      const manifest = (p.manifestPath as string) ?? "k8s/";
+      const ns = p.namespace ? ` -n ${p.namespace}` : "";
+      return `kubectl apply -f ${manifest}${ns}`;
+    }
+    case "ssh": {
+      const host = (p.sshHost as string) ?? "<host>";
+      const user = (p.sshUser as string) ?? "<user>";
+      const path = (p.remotePath as string) ?? ".";
+      return `ssh ${user}@${host} "cd ${path} && ./deploy.sh"`;
+    }
+    default:
+      return `# Deploy to ${target} (${p.environment})`;
+  }
+}
+
+function getStepScript(step: GraphNode): string {
+  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  switch (step.type) {
+    case "shell_command": {
+      const cd = p.workingDirectory ? `cd ${p.workingDirectory} && ` : "";
+      return `${cd}${(p.script as string) || `# ${step.data.label}`}`;
+    }
+    case "docker":
+      return buildDockerCommand(p);
+    case "git":
+      return buildGitCommand(p);
+    case "test":
+      return buildTestCommand(p);
+    case "build":
+      return buildBuildCommand(p);
+    case "deploy":
+      return buildDeployCommand(p);
+    case "notification":
+      return `# Notify ${p.channel}: ${p.message}`;
+    default:
+      return `# ${step.data.label}`;
+  }
+}
+
+/** GitHub Actions step: name + run (or uses for checkout) */
+function renderStepForGithub(step: GraphNode): Record<string, unknown> {
+  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  const secretsEnv = Object.keys(step.data.secrets ?? {}).length > 0
+    ? Object.fromEntries(Object.keys(step.data.secrets).map((k) => [k, `\${{ secrets.${k} }}`]))
+    : undefined;
+  const env = { ...(step.data.env ?? {}), ...(secretsEnv ?? {}) };
+  const hasEnv = Object.keys(env).length > 0;
+
+  if (step.type === "git" && p.action === "checkout") {
+    const withFields: Record<string, unknown> = {};
+    if (p.ref) withFields.ref = p.ref;
+    if (p.depth) withFields["fetch-depth"] = p.depth;
+    if (p.directory) withFields.path = p.directory;
+    const entry: Record<string, unknown> = { uses: "actions/checkout@v4" };
+    if (Object.keys(withFields).length > 0) entry.with = withFields;
+    if (hasEnv) entry.env = env;
+    return entry;
+  }
+
+  const entry: Record<string, unknown> = { name: step.data.label, run: getStepScript(step) };
+  if (step.type === "shell_command") {
+    const shell = p.shell as string;
+    if (shell && shell !== "bash" && shell !== "sh") entry.shell = shell;
+    if (p.workingDirectory) entry["working-directory"] = p.workingDirectory;
+    if (p.continueOnError) entry["continue-on-error"] = p.continueOnError;
+    if (p.timeoutSeconds) entry["timeout-minutes"] = Math.ceil((p.timeoutSeconds as number) / 60);
+  }
+  if (hasEnv) entry.env = env;
   return entry;
-};
+}
+
+/** GitLab CI: expand a step into script lines (multi-line scripts are split) */
+function renderStepScriptLines(step: GraphNode): string[] {
+  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  const envLines = Object.entries(step.data.env ?? {}).map(([k, v]) => `export ${k}="${v}"`);
+  const secretLines = Object.keys(step.data.secrets ?? {}).map((k) => `export ${k}=$${k}`);
+  let scripts: string[];
+  if (step.type === "shell_command" && typeof p.script === "string" && p.script.includes("\n")) {
+    const cd = p.workingDirectory ? `cd ${p.workingDirectory}` : null;
+    scripts = [...(cd ? [cd] : []), ...p.script.split("\n").map((l) => l.trim()).filter(Boolean)];
+  } else {
+    scripts = [getStepScript(step)];
+  }
+  return [...envLines, ...secretLines, ...scripts].filter(Boolean);
+}
+
+/** Map a runsOn value to GitLab runner config (image: or tags:) */
+function gitlabRunnerConfig(runsOn: string): { image?: string; tags?: string[] } {
+  const standardRunners = ["ubuntu-latest", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-24.04"];
+  if (standardRunners.includes(runsOn)) return {};
+  if (runsOn === "windows-latest") return { tags: ["windows"] };
+  if (runsOn === "macos-latest") return { tags: ["macos"] };
+  if (runsOn.includes(":") || runsOn.includes("/")) return { image: runsOn };
+  return { tags: [runsOn] };
+}
+
+/** Azure DevOps step: uses typed tasks where applicable, falls back to script */
+function renderStepForAzure(step: GraphNode): Record<string, unknown> {
+  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  switch (step.type) {
+    case "shell_command": {
+      const entry: Record<string, unknown> = {
+        script: (p.script as string) || `echo "# ${step.data.label}"`,
+        displayName: step.data.label,
+      };
+      if (p.workingDirectory) entry.workingDirectory = p.workingDirectory;
+      if (p.continueOnError) entry.continueOnError = p.continueOnError;
+      if (p.timeoutSeconds) entry.timeoutInMinutes = Math.ceil((p.timeoutSeconds as number) / 60);
+      return entry;
+    }
+    case "docker": {
+      const action = p.action as string;
+      if (action === "build" || action === "push") {
+        const inputs: Record<string, unknown> = { command: action };
+        if (p.image) inputs.repository = p.image;
+        if (p.dockerfile) inputs.Dockerfile = p.dockerfile;
+        if (p.buildContext) inputs.buildContext = p.buildContext;
+        if (p.registry) inputs.containerRegistry = p.registry;
+        return { task: "Docker@2", displayName: step.data.label, inputs };
+      }
+      return { script: buildDockerCommand(p), displayName: step.data.label };
+    }
+    case "git": {
+      if (p.action === "checkout") {
+        const entry: Record<string, unknown> = { checkout: "self" };
+        if (p.ref) entry.ref = p.ref;
+        return entry;
+      }
+      return { script: buildGitCommand(p), displayName: step.data.label };
+    }
+    case "test": {
+      if (p.runner === "dotnet_test") {
+        const inputs: Record<string, unknown> = { command: "test" };
+        if (p.testPattern) inputs.projects = p.testPattern;
+        const entry: Record<string, unknown> = { task: "DotNetCoreCLI@2", displayName: step.data.label, inputs };
+        if (p.continueOnError) entry.continueOnError = p.continueOnError;
+        return entry;
+      }
+      const entry: Record<string, unknown> = { script: buildTestCommand(p), displayName: step.data.label };
+      if (p.continueOnError) entry.continueOnError = p.continueOnError;
+      return entry;
+    }
+    case "build": {
+      if (p.tool === "dotnet") {
+        const inputs: Record<string, unknown> = { command: "build" };
+        if (p.workingDirectory) inputs.workingDirectory = p.workingDirectory;
+        return { task: "DotNetCoreCLI@2", displayName: step.data.label, inputs };
+      }
+      const entry: Record<string, unknown> = { script: buildBuildCommand(p), displayName: step.data.label };
+      if (p.workingDirectory) entry.workingDirectory = p.workingDirectory;
+      return entry;
+    }
+    case "deploy": {
+      if (p.target === "kubernetes") {
+        const inputs: Record<string, unknown> = { action: "deploy" };
+        if (p.namespace) inputs.namespace = p.namespace;
+        if (p.manifestPath) inputs.manifests = p.manifestPath;
+        return { task: "KubernetesManifest@1", displayName: step.data.label, inputs };
+      }
+      return { script: buildDeployCommand(p), displayName: step.data.label };
+    }
+    case "notification":
+      return { script: `# Notify ${p.channel}: ${p.message}`, displayName: step.data.label };
+    default:
+      return { script: `echo "# ${step.data.label}"`, displayName: step.data.label };
+  }
+}
 
 // ── Legacy flat-graph detection ───────────────────────────────────────────────
 
@@ -817,10 +1090,12 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       setTimeout(() => setSavedOk(false), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
+      // Revert local status to match actual DB state so the badge doesn't lie
+      setPipelineStatus(pipeline?.status ?? "draft");
     } finally {
       setStatus("idle");
     }
-  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges]);
+  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges, pipeline]);
 
   // ── exportToYaml ─────────────────────────────────────────────────────────────
   const exportToYaml = useCallback(
@@ -845,7 +1120,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
             const crossNeeds = parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
             const needs = [...intraNeeds, ...crossNeeds];
             if (needs.length > 0) jobEntry.needs = needs;
-            jobEntry.steps = job.steps.map((step) => renderStep(step));
+            jobEntry.steps = job.steps.map((step) => renderStepForGithub(step));
             ghJobs[job.name] = jobEntry;
             currJobNames.push(job.name);
           }
@@ -863,38 +1138,30 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           : ["push"];
         doc = { name: pipeline?.name ?? "pipeline", on: ghOn, jobs: ghJobs };
       } else if (format === "gitlab") {
+        // GitLab CI: stages list + flat job map. Stage ordering is automatic via `stages:`.
+        // `needs:` is only used for intra-stage job dependencies (DAG). Never output `needs: []`
+        // as that means "start immediately regardless of stages" — a semantic footgun.
         const stageNames = stageOrder.map((s) => s.name);
         const glJobs: Record<string, unknown> = {};
-        const stageJobNamesMap: Record<string, string[]> = {};
         for (const stage of stageOrder) {
           const jobNeedsMap = buildJobNeedsMap(stage);
-          const parentJobNames = stageEdges
-            .filter((e) => e.target === stage.id)
-            .flatMap((e) => stageJobNamesMap[e.source] ?? []);
-          const currJobNames: string[] = [];
           for (const job of stage.jobs) {
-            const scripts = job.steps.flatMap((step) => {
-              const params = step.data.params?.baseParameters ?? {};
-              const script =
-                (params as Record<string, unknown>).script ?? `# ${step.data.label} (${step.type})`;
-              return typeof script === "string" ? [script] : [`# ${step.data.label}`];
-            });
+            const scripts = job.steps.flatMap((step) => renderStepScriptLines(step));
             const intraNeeds = jobNeedsMap[job.id] ?? [];
-            const crossNeeds = parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
+            const runnerCfg = gitlabRunnerConfig(job.runsOn);
             const jobConfig: Record<string, unknown> = {
               stage: stage.name,
-              tags: [job.runsOn],
-              needs: [...intraNeeds, ...crossNeeds],
+              ...runnerCfg,
               script: scripts.length > 0 ? scripts : ["echo done"],
             };
+            if (intraNeeds.length > 0) jobConfig.needs = intraNeeds;
             glJobs[job.name] = jobConfig;
-            currJobNames.push(job.name);
           }
-          stageJobNamesMap[stage.id] = currJobNames;
         }
         doc = { stages: stageNames, ...glJobs };
       } else {
-        // azure
+        // Azure DevOps: stages → jobs → steps. Uses typed tasks (Docker@2, KubernetesManifest@1, …)
+        // where applicable, falling back to `script:` for generic commands.
         const azureStages = stageOrder.map((stage) => {
           const deps = stageEdges
             .filter((e) => e.target === stage.id)
@@ -903,18 +1170,13 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           const jobNeedsMap = buildJobNeedsMap(stage);
           const stageEntry: Record<string, unknown> = {
             stage: stage.name,
-            dependsOn: deps.length > 0 ? deps : [],
+            ...(deps.length > 0 ? { dependsOn: deps } : {}),
             jobs: stage.jobs.map((job) => {
               const intraNeeds = jobNeedsMap[job.id] ?? [];
               const jobEntry: Record<string, unknown> = {
                 job: job.name,
                 pool: { vmImage: job.runsOn },
-                steps: job.steps.map((step) => ({
-                  script:
-                    (step.data.params?.baseParameters as Record<string, unknown>)?.script ??
-                    `echo # ${step.data.label}`,
-                  displayName: step.data.label,
-                })),
+                steps: job.steps.map((step) => renderStepForAzure(step)),
               };
               if (intraNeeds.length > 0) jobEntry.dependsOn = intraNeeds;
               return jobEntry;
@@ -922,8 +1184,25 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           };
           return stageEntry;
         });
-        const azTrigger = pipelineTrigger?.branches ?? ["main"];
-        doc = { trigger: azTrigger, stages: azureStages };
+        const azDoc: Record<string, unknown> = {};
+        if (pipelineTrigger) {
+          const t = pipelineTrigger;
+          if (t.triggerType === "push") {
+            azDoc.trigger = { branches: { include: t.branches ?? ["main"] } };
+          } else if (t.triggerType === "tag") {
+            azDoc.trigger = { tags: { include: t.tags ?? ["v*"] } };
+          } else if (t.triggerType === "pull_request") {
+            azDoc.pr = { branches: { include: t.branches ?? ["main"] } };
+          } else if (t.triggerType === "schedule") {
+            azDoc.schedules = [{ cron: t.schedule ?? "0 0 * * *", always: false, branches: { include: ["main"] } }];
+          } else {
+            azDoc.trigger = "none";
+          }
+        } else {
+          azDoc.trigger = { branches: { include: ["main"] } };
+        }
+        azDoc.stages = azureStages;
+        doc = azDoc;
       }
 
       let yaml = "";

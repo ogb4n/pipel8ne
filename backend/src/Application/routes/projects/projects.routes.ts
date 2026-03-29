@@ -2,7 +2,7 @@
  * Routes Project — exposition CRUD de la ressource Project via l'API REST.
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError } from "../../../domain/errors.js";
 import {
   projectSchema,
   projectListSchema,
@@ -20,6 +20,12 @@ interface CreateProjectBody {
   path: string;
   provider: string;
   visibility?: "private" | "public";
+  gitRepository?: {
+    cloneUrl: string;
+    fullName: string;
+    defaultBranch: string;
+    provider: string;
+  };
 }
 
 interface UpdateProjectBody {
@@ -66,13 +72,14 @@ export default async function projectRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const ownerId = request.user.sub;
-      const { name, path, provider, visibility } = request.body;
+      const { name, path, provider, visibility, gitRepository } = request.body;
       const project = await app.projectService.create({
         name,
         path,
         provider,
         visibility: visibility ?? "private",
         ownerId,
+        ...(gitRepository ? { gitRepository } : {}),
       });
       return reply.status(201).send(project);
     },
@@ -120,7 +127,7 @@ export default async function projectRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         return await app.projectService.getById(request.params.id);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -146,7 +153,7 @@ export default async function projectRoutes(app: FastifyInstance) {
           request.user.sub,
         );
         return project;
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -167,7 +174,7 @@ export default async function projectRoutes(app: FastifyInstance) {
       try {
         await app.projectService.delete(request.params.id, request.user.sub);
         return reply.status(204).send();
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },

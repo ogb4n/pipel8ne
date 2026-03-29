@@ -8,6 +8,7 @@ import PageProjects from "./Pages/PageProjects";
 import PagePipelines from "./Pages/PagePipelines";
 import PageGraph from "./Pages/PageGraph";
 import PageSettings from "./Pages/PageSettings";
+import PageOAuthCallback from "./Pages/PageOAuthCallback";
 import { SETTINGS_SECTIONS } from "./Pages/PageSettings";
 import "./App.css";
 
@@ -38,7 +39,17 @@ function SettingsDropdown() {
         title="Paramètres"
         className={`p-2 rounded-md transition-colors ${open ? "text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800" : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
@@ -61,7 +72,9 @@ function SettingsDropdown() {
                 <span className="text-zinc-400 dark:text-zinc-500 shrink-0">{s.icon}</span>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{s.label}</p>
-                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{s.description}</p>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                    {s.description}
+                  </p>
                 </div>
               </Link>
             ))}
@@ -75,17 +88,31 @@ function SettingsDropdown() {
                 <span className="text-zinc-400 dark:text-zinc-500 shrink-0">{s.icon}</span>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{s.label}</p>
-                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{s.description}</p>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                    {s.description}
+                  </p>
                 </div>
               </Link>
             ))}
 
             <div className="border-t border-zinc-100 dark:border-zinc-800 mt-1 pt-1">
               <button
-                onClick={() => { void handleLogout(); }}
+                onClick={() => {
+                  void handleLogout();
+                }}
                 className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0"
+                >
                   <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
                   <polyline points="10 11 14 8 10 5" />
                   <line x1="14" y1="8" x2="6" y2="8" />
@@ -142,12 +169,62 @@ function App() {
             <main className="flex-grow">
               <Routes>
                 <Route path="/login" element={<PageLogin />} />
-                <Route path="/projects" element={<ProtectedRoute><PageProjects /></ProtectedRoute>} />
-                <Route path="/projects/:projectId/pipelines" element={<ProtectedRoute><PagePipelines /></ProtectedRoute>} />
-                <Route path="/projects/:projectId/pipelines/:pipelineId" element={<ProtectedRoute><PageGraph /></ProtectedRoute>} />
-                <Route path="/settings/:section" element={<ProtectedRoute><PageSettings /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><PageSettings /></ProtectedRoute>} />
-                <Route path="*" element={<ProtectedRoute><PageProjects /></ProtectedRoute>} />
+                <Route
+                  path="/oauth/callback"
+                  element={
+                    <ProtectedRoute>
+                      <PageOAuthCallback />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/projects"
+                  element={
+                    <ProtectedRoute>
+                      <PageProjects />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/projects/:projectId/pipelines"
+                  element={
+                    <ProtectedRoute>
+                      <PagePipelines />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/projects/:projectId/pipelines/:pipelineId"
+                  element={
+                    <ProtectedRoute>
+                      <PageGraph />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/:section"
+                  element={
+                    <ProtectedRoute>
+                      <PageSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <PageSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="*"
+                  element={
+                    <ProtectedRoute>
+                      <PageProjects />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </main>
           </div>

@@ -4,7 +4,7 @@
  * L'autorisation est gérée par GraphService (couche domaine).
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError, ValidationError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError, ValidationError } from "../../../domain/errors.js";
 import {
   pipelineSchema,
   createPipelineBodySchema,
@@ -85,7 +85,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         return await app.graphService.listByProject(request.params.projectId, request.user.sub);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -112,7 +112,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
           request.user.sub,
         );
         return reply.status(201).send(pipeline);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -136,7 +136,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
           request.params.projectId,
           request.user.sub,
         );
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -160,10 +160,10 @@ export default async function pipelineRoutes(app: FastifyInstance) {
         return await app.graphService.update(
           request.params.pipelineId,
           request.params.projectId,
-          { status, trigger, viewport, stages, stageEdges },
+          { status, trigger, viewport, stages: stages as any, stageEdges },
           request.user.sub,
         );
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -196,7 +196,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
           request.user.sub,
         );
         return reply.status(200).send(plan);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -221,7 +221,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
           request.user.sub,
         );
         return reply.status(204).send();
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },

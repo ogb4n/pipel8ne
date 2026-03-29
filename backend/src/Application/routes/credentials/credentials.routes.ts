@@ -4,7 +4,7 @@
  * Les valeurs sensibles ne transitent jamais en clair dans les réponses.
  */
 import { FastifyInstance, FastifyReply } from "fastify";
-import { NotFoundError, ForbiddenError } from "../../../Domain/errors.js";
+import { NotFoundError, ForbiddenError } from "../../../domain/errors.js";
 import {
   credentialSchema,
   credentialListSchema,
@@ -69,7 +69,7 @@ export default async function credentialRoutes(app: FastifyInstance) {
       try {
         const credential = await app.credentialService.create(request.user.sub, request.body);
         return reply.status(201).send(credential);
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -98,7 +98,7 @@ export default async function credentialRoutes(app: FastifyInstance) {
           request.user.sub,
           request.body,
         );
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },
@@ -123,7 +123,7 @@ export default async function credentialRoutes(app: FastifyInstance) {
       try {
         await app.credentialService.delete(request.params.id, request.user.sub);
         return reply.status(204).send();
-      } catch (err) {
+      } catch (err: unknown) {
         return handleDomainError(err, reply);
       }
     },

@@ -7,6 +7,7 @@ import graphRoutes from "./graphs/graphs.routes";
 import credentialRoutes from "./credentials/credentials.routes";
 import { apiKeyRoutes } from "./apikeys/apikeys.routes";
 import adminRoutes from "./admin/index";
+import gitConnectionRoutes from "./git-connections/git-connections.routes";
 
 /**
  * Enregistre toutes les routes de l'API.
@@ -21,4 +22,5 @@ export default async function registerRoutes(app: FastifyInstance) {
   await app.register(credentialRoutes);
   await app.register(apiKeyRoutes);
   await app.register(adminRoutes);
+  await app.register(gitConnectionRoutes);
 }

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { ISecretsService } from "../Domain/graph/ISecretsService.js";
+import { ISecretsService } from "../domain/graph/ISecretsService.js";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;

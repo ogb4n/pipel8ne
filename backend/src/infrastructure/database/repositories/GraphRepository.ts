@@ -146,12 +146,24 @@ export class GraphRepository implements IGraphRepository {
 
   async update(
     id: string,
-    data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: Edge[] },
+    data: {
+      status: "draft" | "active";
+      trigger?: TriggerNodeParams;
+      viewport: Viewport;
+      stages: Stage[];
+      stageEdges: Edge[];
+    },
   ): Promise<Graph> {
     const encryptedStages = data.stages.map((s) => this.encryptStage(s));
     const doc = await GraphModel.findByIdAndUpdate(
       id,
-      { status: data.status, trigger: data.trigger, viewport: data.viewport, stages: encryptedStages, stageEdges: data.stageEdges },
+      {
+        status: data.status,
+        trigger: data.trigger,
+        viewport: data.viewport,
+        stages: encryptedStages,
+        stageEdges: data.stageEdges,
+      },
       { new: true },
     );
     if (!doc) throw new Error(`Pipeline not found for id=${id}`);
