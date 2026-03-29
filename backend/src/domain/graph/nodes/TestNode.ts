@@ -5,6 +5,7 @@ import { BaseNode } from "./BaseNode.js";
 export type TestRunner =
   | "jest"
   | "vitest"
+  | "npm"
   | "pytest"
   | "go_test"
   | "cargo_test"

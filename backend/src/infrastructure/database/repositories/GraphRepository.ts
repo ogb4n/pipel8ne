@@ -1,12 +1,12 @@
 import { GraphModel } from "../models/GraphModel.js";
-import { Graph, Viewport } from "../../../Domain/graph/Graph.js";
-import type { TriggerNodeParams } from "../../../Domain/graph/nodes/TriggerNode.js";
-import { Stage } from "../../../Domain/graph/Stage.js";
-import { Job } from "../../../Domain/graph/Job.js";
-import { Node } from "../../../Domain/graph/Node.js";
-import { Edge } from "../../../Domain/graph/Edge.js";
-import { IGraphRepository } from "../../../Domain/graph/IGraphRepository.js";
-import { ISecretsService } from "../../../Domain/graph/ISecretsService.js";
+import { Graph, Viewport } from "../../../domain/graph/Graph.js";
+import type { TriggerNodeParams } from "../../../domain/graph/nodes/TriggerNode.js";
+import { Stage } from "../../../domain/graph/Stage.js";
+import { Job } from "../../../domain/graph/Job.js";
+import { Node } from "../../../domain/graph/Node.js";
+import { Edge } from "../../../domain/graph/Edge.js";
+import { IGraphRepository } from "../../../domain/graph/IGraphRepository.js";
+import { ISecretsService } from "../../../domain/graph/ISecretsService.js";
 
 export class GraphRepository implements IGraphRepository {
   constructor(private readonly secretsService: ISecretsService) {}

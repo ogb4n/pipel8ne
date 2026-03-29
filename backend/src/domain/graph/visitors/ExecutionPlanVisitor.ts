@@ -10,6 +10,7 @@
  *   const plan = visitor.getJobPlan();   // JobExecutionPlan
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
 import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
@@ -73,6 +74,11 @@ export class ExecutionPlanVisitor implements INodeVisitor {
   }
 
   // ── visit methods ────────────────────────────────────────────────────────────
+
+  visitTrigger(node: TriggerNode): void {
+    const p = node.triggerParams ?? {};
+    this.addStep(node.id, node.type, node.data.label, `Trigger on: ${p.triggerType ?? "?"}`);
+  }
 
   visitShellCommand(node: ShellCommandNode): void {
     const p = node.shellParams ?? {};

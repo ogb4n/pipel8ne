@@ -15,8 +15,10 @@ import type { TestNode } from "../nodes/TestNode";
 import type { BuildNode } from "../nodes/BuildNode";
 import type { DeployNode } from "../nodes/DeployNode";
 import type { NotificationNode } from "../nodes/NotificationNode";
+import type { TriggerNode } from "../nodes/TriggerNode";
 
 export interface INodeVisitor {
+  visitTrigger(node: TriggerNode): void;
   visitShellCommand(node: ShellCommandNode): void;
   visitDocker(node: DockerNode): void;
   visitGit(node: GitNode): void;

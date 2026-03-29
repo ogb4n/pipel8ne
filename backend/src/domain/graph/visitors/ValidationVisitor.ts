@@ -10,6 +10,7 @@
  *   if (!visitor.isValid()) throw new ValidationError(visitor.getErrors());
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
 import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
@@ -46,6 +47,10 @@ export class ValidationVisitor implements INodeVisitor {
   }
 
   // ── visit methods ────────────────────────────────────────────────────────────
+
+  visitTrigger(node: TriggerNode): void {
+    this.require(node.id, "triggerParams.triggerType", node.triggerParams?.triggerType);
+  }
 
   visitShellCommand(node: ShellCommandNode): void {
     this.require(node.id, "shellParams.shell", node.shellParams?.shell);
