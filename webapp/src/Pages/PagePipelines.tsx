@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../Api/client";
 import { Graph, Project } from "../Api/types";
+import { parseYamlToPipeline } from "../utils/parseYaml";
 
 const inputCls = "w-full px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition";
 const labelCls = "block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider";
@@ -18,6 +19,11 @@ const PagePipelines: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [newName, setNewName] = useState("");
     const [creating, setCreating] = useState(false);
+
+    // Import YAML state
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState<string | null>(null);
 
     // Push modal state
     const [pushTarget, setPushTarget] = useState<Graph | null>(null);
@@ -59,6 +65,31 @@ const PagePipelines: React.FC = () => {
             setError(err instanceof Error ? err.message : "Erreur de création");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleImportYaml = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !projectId) return;
+        setImporting(true);
+        setImportError(null);
+        try {
+            const text = await file.text();
+            const parsed = parseYamlToPipeline(text, file.name);
+            const pipeline = await api.pipelines.create(projectId, parsed.name);
+            await api.pipelines.update(projectId, pipeline.id, {
+                status: "draft",
+                trigger: parsed.trigger,
+                viewport: { x: 0, y: 0, zoom: 1 },
+                stages: parsed.stages,
+                stageEdges: parsed.stageEdges,
+            });
+            void navigate(`/projects/${projectId}/pipelines/${pipeline.id}`);
+        } catch (err) {
+            setImportError(err instanceof Error ? err.message : "Erreur d'import");
+        } finally {
+            setImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -122,20 +153,48 @@ const PagePipelines: React.FC = () => {
                     </svg>
                     <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pipelines</h1>
                 </div>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-1.5 text-xs font-medium bg-accent-500 hover:bg-accent-600 text-white px-3.5 py-2 rounded-md transition-colors"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Nouvelle pipeline
-                </button>
+                <div className="flex items-center gap-2">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".yml,.yaml"
+                        className="hidden"
+                        onChange={(e) => { void handleImportYaml(e); }}
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={importing}
+                        className="flex items-center gap-1.5 text-xs font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 px-3.5 py-2 rounded-md transition-colors"
+                    >
+                        {importing ? (
+                            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        )}
+                        {importing ? "Import..." : "Importer un YAML"}
+                    </button>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-1.5 text-xs font-medium bg-accent-500 hover:bg-accent-600 text-white px-3.5 py-2 rounded-md transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Nouvelle pipeline
+                    </button>
+                </div>
             </div>
 
-            {error && (
+            {(error ?? importError) && (
                 <div className="mb-6 text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
-                    {error}
+                    {error ?? importError}
                 </div>
             )}
 
