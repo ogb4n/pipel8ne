@@ -160,7 +160,7 @@ export default async function pipelineRoutes(app: FastifyInstance) {
         return await app.graphService.update(
           request.params.pipelineId,
           request.params.projectId,
-          { status, trigger, viewport, stages: stages as any, stageEdges },
+          { status, trigger: trigger as import("../../../domain/graph/nodes/TriggerNode.js").TriggerNodeParams | undefined, viewport, stages: stages as any, stageEdges },
           request.user.sub,
         );
       } catch (err: unknown) {

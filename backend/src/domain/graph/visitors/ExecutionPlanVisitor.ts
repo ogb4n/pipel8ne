@@ -192,4 +192,8 @@ export class ExecutionPlanVisitor implements INodeVisitor {
     );
   }
 
+  visitTrigger(node: import("../nodes/TriggerNode").TriggerNode): void {
+    this.addStep(node.id, node.type, node.data.label, `trigger: ${node.triggerParams.triggerType}`, []);
+  }
+
 }

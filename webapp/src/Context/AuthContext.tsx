@@ -18,13 +18,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const stored = localStorage.getItem("user");
-        if (stored) {
-            try { setUser(JSON.parse(stored) as User); } catch { /* ignore */ }
-        }
-        // Refresh user data from server to pick up new fields (e.g. role)
         const accessToken = localStorage.getItem("accessToken");
         if (accessToken) {
+            const stored = localStorage.getItem("user");
+            if (stored) {
+                try { setUser(JSON.parse(stored) as User); } catch { /* ignore */ }
+            }
+            // Refresh user data from server to pick up new fields (e.g. role)
             api.users.me()
                 .then((fresh) => {
                     localStorage.setItem("user", JSON.stringify(fresh));
@@ -33,6 +33,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .catch(() => { /* token may be expired, leave current user */ })
                 .finally(() => setIsLoading(false));
         } else {
+            // No access token — clear any stale user data to avoid redirect loops
+            localStorage.removeItem("user");
             setIsLoading(false);
         }
     }, []);
