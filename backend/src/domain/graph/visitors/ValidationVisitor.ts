@@ -135,4 +135,8 @@ export class ValidationVisitor implements INodeVisitor {
     this.require(node.id, "notificationParams.message", node.notificationParams?.message);
   }
 
+  visitTrigger(_node: import("../nodes/TriggerNode").TriggerNode): void {
+    // Trigger nodes have no required fields beyond triggerType (guaranteed by type)
+  }
+
 }
