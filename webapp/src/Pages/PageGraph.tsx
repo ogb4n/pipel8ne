@@ -23,7 +23,7 @@ import PipelineBreadcrumb from "../Components/Graph/PipelineBreadcrumb";
 const edgeTypes = { stageEdge: StageEdge, jobEdge: JobEdge };
 
 const CONFIG_PANEL_NODE_TYPES = new Set([
-    "shell_command", "docker", "git", "test", "build", "deploy", "notification",
+    "shell_command", "git", "notification",
 ]);
 
 interface PageGraphCanvasProps {
@@ -68,7 +68,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     const activeJobName = useMemo(() => {
         if (!activeJobId) return null;
         const jobNode = nodes.find((n) => n.id === activeJobId);
-        const jobNodeData = jobNode?.data as any | undefined;
+        const jobNodeData = jobNode?.data as { name?: string; label?: string; title?: string } | undefined;
         const nodeName: string | null =
             jobNodeData?.name ?? jobNodeData?.label ?? jobNodeData?.title ?? null;
         if (nodeName) return nodeName;
@@ -83,7 +83,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     );
 
     const handleDelete = async () => {
-        if (!window.confirm("Supprimer cette pipeline ? Cette action est irréversible.")) return;
+        if (!globalThis.confirm("Supprimer cette pipeline ? Cette action est irréversible.")) return;
         await deletePipeline();
         void navigate(`/projects/${projectId}/pipelines`);
     };

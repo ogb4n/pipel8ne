@@ -6,8 +6,7 @@ import type { NodeType, NodeData } from "../../../Api/types";
 
 /** Node types that can be added as a next step (no trigger in the middle) */
 const ADDABLE_TYPES: NodeType[] = [
-    "shell_command", "docker", "git", "test",
-    "build", "deploy", "notification",
+    "shell_command", "git", "notification",
 ];
 
 // ── Hover toolbar button ─────────────────────────────────────────────────────
@@ -22,7 +21,7 @@ const ToolbarBtn: React.FC<{
         title={title}
         onClick={onClick}
         className={[
-            "w-7 h-7 flex items-center justify-center rounded-lg text-sm transition",
+            "w-7 h-7 flex items-center justify-center text-sm transition",
             danger
                 ? "text-red-400 hover:bg-red-500/20 hover:text-red-300"
                 : "text-gray-300 hover:bg-white/15 hover:text-white",
@@ -33,41 +32,38 @@ const ToolbarBtn: React.FC<{
 );
 
 // ── Inline node picker (shown when clicking "+") ─────────────────────────────
-const NodePicker: React.FC<{
+const NodePicker = React.forwardRef<HTMLUListElement, {
     onPick: (t: NodeType) => void;
-    onClose: () => void;
-}> = ({ onPick, onClose }) => (
-    <>
-        <ul
-            onMouseDown={(e) => e.stopPropagation()}
-            className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden py-1"
-        >
-            {ADDABLE_TYPES.map((t) => {
-                const c = nodeConfig[t];
-                return (
-                    <li key={t}>
-                        <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); onPick(t); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left"
+}>(({ onPick }, ref) => (
+    <ul
+        ref={ref}
+        className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm shadow-2xl overflow-hidden py-1"
+    >
+        {ADDABLE_TYPES.map((t) => {
+            const c = nodeConfig[t];
+            return (
+                <li key={t}>
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onPick(t); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left"
+                    >
+                        <span
+                            className="w-6 h-6 rounded-sm flex items-center justify-center text-white shrink-0 text-xs"
+                            style={{ background: c.color }}
                         >
-                            <span
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0 text-xs"
-                                style={{ background: c.color }}
-                            >
-                                {c.icon}
-                            </span>
-                            <span className="flex flex-col min-w-0">
-                                <span className="text-xs font-medium text-zinc-800 dark:text-zinc-100">{c.label}</span>
-                                <span className="text-[11px] text-zinc-400 truncate">{c.description}</span>
-                            </span>
-                        </button>
-                    </li>
-                );
-            })}
-        </ul>
-    </>
-);
+                            {c.icon}
+                        </span>
+                        <span className="flex flex-col min-w-0">
+                            <span className="text-xs font-medium text-zinc-800 dark:text-zinc-100">{c.label}</span>
+                            <span className="text-[11px] text-zinc-400 truncate">{c.description}</span>
+                        </span>
+                    </button>
+                </li>
+            );
+        })}
+    </ul>
+));
 
 const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
     const cfg = nodeConfig[type as NodeType];
@@ -79,10 +75,14 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
     const [hovered, setHovered] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pickerRef = useRef<HTMLUListElement>(null);
 
     useEffect(() => {
         if (!pickerOpen) return;
-        const close = () => setPickerOpen(false);
+        const close = (e: MouseEvent) => {
+            if (pickerRef.current?.contains(e.target as Node)) return;
+            setPickerOpen(false);
+        };
         const id = setTimeout(() => document.addEventListener("click", close), 0);
         return () => {
             clearTimeout(id);
@@ -139,17 +139,15 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
     };
 
     return (
-        <div
-            className="relative"
-            onMouseEnter={onEnter}
-            onMouseLeave={onLeave}
-        >
+        <div className="relative">
             {/* ── Hover toolbar ── */}
             <div
+                role="toolbar"
+                aria-label="Node actions"
                 className={[
                     "absolute -top-10 left-1/2 -translate-x-1/2 z-10",
                     "flex items-center gap-0.5 px-1.5 py-1",
-                    "rounded-lg bg-zinc-800/95 backdrop-blur-sm border border-zinc-700/60 shadow-lg",
+                    "rounded-sm bg-zinc-800/95 backdrop-blur-sm border border-zinc-700/60 shadow-lg",
                     "transition-opacity duration-100",
                     hovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
                 ].join(" ")}
@@ -162,13 +160,19 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
             </div>
 
             {/* ── Card ── */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-52 text-xs overflow-hidden">
+            <button
+                type="button"
+                onClick={handleConfigure}
+                className="rounded-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-fit text-xs overflow-hidden text-left"
+                onMouseEnter={onEnter}
+                onMouseLeave={onLeave}
+            >
                 <Handle
-                        type="target"
-                        position={Position.Left}
-                        style={{ background: cfg.color }}
-                        className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
-                    />
+                    type="target"
+                    position={Position.Left}
+                    style={{ background: cfg.color }}
+                    className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
+                />
 
                 {/* Header */}
                 <div
@@ -199,7 +203,7 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
                     style={{ background: cfg.color }}
                     className="w-3! h-3! border-2! border-white! dark:border-zinc-900!"
                 />
-            </div>
+            </button>
 
             {/* ── "+" add next node ── */}
             {!hasOutgoing && (
@@ -208,7 +212,7 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
                         type="button"
                         title="Ajouter un node"
                         onClick={(e) => { e.stopPropagation(); setPickerOpen((p) => !p); }}
-                        className="w-6 h-6 rounded-full flex items-center justify-center
+                        className="w-6 h-6 rounded-sm flex items-center justify-center
                                    bg-zinc-800 hover:bg-accent-500
                                    border border-zinc-600 hover:border-accent-400
                                    text-zinc-400 hover:text-white transition-colors"
@@ -219,8 +223,8 @@ const CicdNodeCard: React.FC<NodeProps> = ({ id, type, data }) => {
                     </button>
                     {pickerOpen && (
                         <NodePicker
+                            ref={pickerRef}
                             onPick={handlePickNext}
-                            onClose={() => setPickerOpen(false)}
                         />
                     )}
                 </div>

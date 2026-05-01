@@ -76,7 +76,7 @@ export default function GitOnboardingModal({ forceOpen, onClose }: Props = {}) {
     const config = oauthConfig[provider];
     if (!config.enabled) return;
     if (!forceOpen) localStorage.setItem(STORAGE_KEY, "1");
-    window.location.href = config.authUrl;
+    globalThis.location.href = config.authUrl;
   }
 
   function handleDismiss() {
@@ -178,93 +178,7 @@ export default function GitOnboardingModal({ forceOpen, onClose }: Props = {}) {
             </p>
           </div>
 
-          {patProvider !== null ? (
-            /* ── PAT step ── */
-            <div className="px-8 pb-6 space-y-3">
-              {/* Back button */}
-              <button
-                onClick={() => { setPatProvider(null); setConnectError(null); }}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-                Retour
-              </button>
-
-              {credentialsLoading ? (
-                <div className="flex items-center gap-2 text-xs text-zinc-400 py-4">
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
-                  Chargement des credentials...
-                </div>
-              ) : (
-                <>
-                  {matchingCredentials.length > 0 ? (
-                    <div className="space-y-2">
-                      {matchingCredentials.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedCredentialId(c.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
-                            selectedCredentialId === c.id
-                              ? "border-accent-500 bg-accent-500/5 dark:bg-accent-500/10"
-                              : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
-                          }`}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 shrink-0">
-                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                          </svg>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{c.label}</p>
-                            <p className="text-xs text-zinc-400 dark:text-zinc-500">{c.provider}</p>
-                          </div>
-                          {selectedCredentialId === c.id && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent-500 shrink-0">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-2">
-                      Aucun token enregistré pour ce provider.
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateCredential(true)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-sm text-zinc-500 dark:text-zinc-400 hover:border-accent-500 hover:text-accent-500 dark:hover:border-accent-400 dark:hover:text-accent-400 transition-colors"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Créer un token
-                  </button>
-
-                  {connectError && (
-                    <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
-                      {connectError}
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => { void handleConnectWithCredential(); }}
-                    disabled={!selectedCredentialId || connecting}
-                    className="w-full py-3 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-                  >
-                    {connecting ? "Connexion..." : "Connecter"}
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
+          {patProvider === null ? (
             /* ── Provider list ── */
             <div className="px-8 pb-6 space-y-3">
               <button
@@ -338,6 +252,91 @@ export default function GitOnboardingModal({ forceOpen, onClose }: Props = {}) {
                   {oauthConfig.azure_devops.enabled ? "Continuer avec Azure DevOps" : "Connecter avec un token Azure DevOps"}
                 </span>
               </button>
+            </div>
+          ) : (
+            /* ── PAT step ── */
+            <div className="px-8 pb-6 space-y-3">
+              {/* Back button */}
+              <button
+                onClick={() => { setPatProvider(null); setConnectError(null); }}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Retour
+              </button>
+
+              {credentialsLoading ? (
+                <div className="flex items-center gap-2 text-xs text-zinc-400 py-4">
+                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Chargement des credentials...
+                </div>
+              ) : (
+                <>
+                  {matchingCredentials.length > 0 ? (
+                    <div className="space-y-2">
+                      {matchingCredentials.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedCredentialId(c.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${selectedCredentialId === c.id
+                            ? "border-accent-500 bg-accent-500/5 dark:bg-accent-500/10"
+                            : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                            }`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 shrink-0">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                          </svg>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{c.label}</p>
+                            <p className="text-xs text-zinc-400 dark:text-zinc-500">{c.provider}</p>
+                          </div>
+                          {selectedCredentialId === c.id && (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent-500 shrink-0">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-2">
+                      Aucun token enregistré pour ce provider.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCredential(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-sm text-zinc-500 dark:text-zinc-400 hover:border-accent-500 hover:text-accent-500 dark:hover:border-accent-400 dark:hover:text-accent-400 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Créer un token
+                  </button>
+
+                  {connectError && (
+                    <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
+                      {connectError}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => { void handleConnectWithCredential(); }}
+                    disabled={!selectedCredentialId || connecting}
+                    className="w-full py-3 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                  >
+                    {connecting ? "Connexion..." : "Connecter"}
+                  </button>
+                </>
+              )}
             </div>
           )}
 

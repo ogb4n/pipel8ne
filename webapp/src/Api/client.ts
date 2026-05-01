@@ -49,7 +49,7 @@ export function clearTokens() {
 async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const { accessToken } = getTokens();
   const headers: Record<string, string> = {
-    ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+    ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
     ...(init.headers as Record<string, string>),
   };
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
@@ -57,48 +57,7 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
   if (res.status === 401 && !retried) {
-    if (isRefreshing) {
-      // Queue until ongoing refresh settles, then retry once
-      await new Promise<void>((resolve, reject) => failedQueue.push({ resolve, reject }));
-      return request<T>(path, init, true);
-    }
-
-    isRefreshing = true;
-    const { refreshToken } = getTokens();
-
-    if (!refreshToken) {
-      isRefreshing = false;
-      const err = new Error("Session expirée");
-      processQueue(err);
-      clearTokens();
-      window.location.href = "/login";
-      throw err;
-    }
-
-    try {
-      const refreshRes = await fetch(`${BASE}/api/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
-      if (!refreshRes.ok) {
-        clearTokens();
-        const err = new Error("Session expirée");
-        processQueue(err);
-        window.location.href = "/login";
-        throw err;
-      }
-      const data = (await refreshRes.json()) as { accessToken: string; refreshToken: string };
-      setTokens(data.accessToken, data.refreshToken);
-      processQueue(null);
-      return request<T>(path, init, true);
-    } catch (e) {
-      const err = e instanceof Error ? e : new Error("Session expirée");
-      processQueue(err);
-      throw err;
-    } finally {
-      isRefreshing = false;
-    }
+    return handle401<T>(path, init);
   }
 
   if (res.status === 204) return undefined as T;
@@ -109,7 +68,9 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
     // A successful non-JSON response on a mutating request means the API route
     // doesn't exist (e.g. the backend returned the SPA's index.html).
     if (init.method && init.method !== "GET") {
-      throw new Error(`Réponse inattendue du serveur (${res.status} non-JSON) — le backend est-il à jour ?`);
+      throw new Error(
+        `Réponse inattendue du serveur (${res.status} non-JSON) — le backend est-il à jour ?`,
+      );
     }
     return undefined as T;
   }
@@ -117,6 +78,51 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   const body = (await res.json()) as { message?: string };
   if (!res.ok) throw new Error(body?.message ?? `HTTP ${res.status}`);
   return body as T;
+}
+
+async function handle401<T>(path: string, init: RequestInit): Promise<T> {
+  if (isRefreshing) {
+    // Queue until ongoing refresh settles, then retry once
+    await new Promise<void>((resolve, reject) => failedQueue.push({ resolve, reject }));
+    return request<T>(path, init, true);
+  }
+
+  isRefreshing = true;
+  const { refreshToken } = getTokens();
+
+  if (!refreshToken) {
+    isRefreshing = false;
+    const err = new Error("Session expirée");
+    processQueue(err);
+    clearTokens();
+    globalThis.location.href = "/login";
+    throw err;
+  }
+
+  try {
+    const refreshRes = await fetch(`${BASE}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!refreshRes.ok) {
+      clearTokens();
+      const err = new Error("Session expirée");
+      processQueue(err);
+      globalThis.location.href = "/login";
+      throw err;
+    }
+    const data = (await refreshRes.json()) as { accessToken: string; refreshToken: string };
+    setTokens(data.accessToken, data.refreshToken);
+    processQueue(null);
+    return request<T>(path, init, true);
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error("Session expirée");
+    processQueue(err);
+    throw err;
+  } finally {
+    isRefreshing = false;
+  }
 }
 
 export const api = {
@@ -185,7 +191,13 @@ export const api = {
     update: (
       projectId: string,
       pipelineId: string,
-      data: { status: "draft" | "active"; trigger?: TriggerNodeParams; viewport: Viewport; stages: Stage[]; stageEdges: GraphEdge[] },
+      data: {
+        status: "draft" | "active";
+        trigger?: TriggerNodeParams;
+        viewport: Viewport;
+        stages: Stage[];
+        stageEdges: GraphEdge[];
+      },
     ) =>
       request<Graph>(`/api/projects/${projectId}/pipelines/${pipelineId}`, {
         method: "PUT",

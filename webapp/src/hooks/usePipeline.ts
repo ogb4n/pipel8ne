@@ -127,7 +127,10 @@ function stageJobsToRFNodes(stage: Stage): RFNode[] {
 }
 
 /** RF stage-view nodes + edges → { jobs, jobEdges } for one stage */
-function rfJobNodesToJobs(rfNodes: RFNode[], rfEdges: RFEdge[]): { jobs: Job[]; jobEdges: GraphEdge[] } {
+function rfJobNodesToJobs(
+  rfNodes: RFNode[],
+  rfEdges: RFEdge[],
+): { jobs: Job[]; jobEdges: GraphEdge[] } {
   const jobIds = new Set(rfNodes.filter((n) => n.type === "jobCard").map((n) => n.id));
 
   const toBackendEdge = (e: RFEdge): GraphEdge => ({
@@ -213,7 +216,7 @@ function topoSortStages(stages: Stage[], stageEdges: GraphEdge[]): Stage[] {
       if (inDegree[neighborId] === 0) queue.push(neighborId);
     }
   }
-  for (const s of stages) if (!result.find((r) => r.id === s.id)) result.push(s);
+  for (const s of stages) if (!result.some((r) => r.id === s.id)) result.push(s);
   return result;
 }
 
@@ -231,7 +234,10 @@ const yamlValue = (val: unknown, indent: number): string => {
       val.includes('"') ||
       /^[\d\s]/.test(val)
     ) {
-      return `"${val.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+      return `"${val
+        .replaceAll("\\", String.raw`\\\\`)
+        .replaceAll('"', String.raw`\"`)
+        .replaceAll("\n", String.raw`\n`)}"`;
     }
     return val;
   }
@@ -292,38 +298,6 @@ const buildJobNeedsMap = (stage: Stage): Record<string, string[]> => {
 
 // ── Per-platform step rendering ───────────────────────────────────────────────
 
-function buildDockerCommand(p: Record<string, unknown>): string {
-  const action = (p.action as string) ?? "build";
-  switch (action) {
-    case "build": {
-      const tags = Array.isArray(p.tags)
-        ? p.tags.map((t: unknown) => `-t ${t}`).join(" ")
-        : p.image
-          ? `-t ${p.image}`
-          : "";
-      const file = p.dockerfile ? `-f ${p.dockerfile}` : "";
-      const ctx = (p.buildContext as string) ?? ".";
-      return ["docker build", tags, file, ctx].filter(Boolean).join(" ");
-    }
-    case "push":
-      return `docker push ${(Array.isArray(p.tags) ? p.tags[0] : undefined) ?? p.image ?? "image"}`;
-    case "pull":
-      return `docker pull ${p.image ?? "image"}`;
-    case "run":
-      return `docker run ${p.image ?? "image"} ${p.command ?? ""}`.trim();
-    case "compose_up": {
-      const file = p.composeFile ? `-f ${p.composeFile}` : "";
-      return `docker compose ${file} up -d`.trim();
-    }
-    case "compose_down": {
-      const file = p.composeFile ? `-f ${p.composeFile}` : "";
-      return `docker compose ${file} down`.trim();
-    }
-    default:
-      return `docker ${action}`;
-  }
-}
-
 function buildGitCommand(p: Record<string, unknown>): string {
   const action = (p.action as string) ?? "checkout";
   switch (action) {
@@ -348,75 +322,15 @@ function buildGitCommand(p: Record<string, unknown>): string {
   }
 }
 
-function buildTestCommand(p: Record<string, unknown>): string {
-  if (p.command) return p.command as string;
-  const runner = p.runner as string;
-  const pattern = p.testPattern ? ` ${p.testPattern}` : "";
-  switch (runner) {
-    case "jest": return `npx jest${pattern}`;
-    case "vitest": return `npx vitest run${pattern}`;
-    case "pytest": return `pytest${pattern}`;
-    case "go_test": return "go test ./...";
-    case "cargo_test": return "cargo test";
-    case "dotnet_test": return "dotnet test";
-    default: return "# run tests";
-  }
-}
-
-function buildBuildCommand(p: Record<string, unknown>): string {
-  if (p.command) return p.command as string;
-  const tool = p.tool as string;
-  const target = (p.target as string) ?? "build";
-  switch (tool) {
-    case "npm": return `npm run ${target}`;
-    case "yarn": return `yarn ${target}`;
-    case "pnpm": return `pnpm run ${target}`;
-    case "maven": return `mvn ${target}`;
-    case "gradle": return `./gradlew ${target}`;
-    case "cargo": return `cargo ${target}`;
-    case "go": return "go build ./...";
-    case "dotnet": return "dotnet build";
-    case "make": return `make ${target}`;
-    default: return `# build with ${tool}`;
-  }
-}
-
-function buildDeployCommand(p: Record<string, unknown>): string {
-  const target = p.target as string;
-  switch (target) {
-    case "kubernetes": {
-      const manifest = (p.manifestPath as string) ?? "k8s/";
-      const ns = p.namespace ? ` -n ${p.namespace}` : "";
-      return `kubectl apply -f ${manifest}${ns}`;
-    }
-    case "ssh": {
-      const host = (p.sshHost as string) ?? "<host>";
-      const user = (p.sshUser as string) ?? "<user>";
-      const path = (p.remotePath as string) ?? ".";
-      return `ssh ${user}@${host} "cd ${path} && ./deploy.sh"`;
-    }
-    default:
-      return `# Deploy to ${target} (${p.environment})`;
-  }
-}
-
 function getStepScript(step: GraphNode): string {
-  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  const p = step.data.params?.baseParameters ?? {};
   switch (step.type) {
     case "shell_command": {
       const cd = p.workingDirectory ? `cd ${p.workingDirectory} && ` : "";
       return `${cd}${(p.script as string) || `# ${step.data.label}`}`;
     }
-    case "docker":
-      return buildDockerCommand(p);
     case "git":
       return buildGitCommand(p);
-    case "test":
-      return buildTestCommand(p);
-    case "build":
-      return buildBuildCommand(p);
-    case "deploy":
-      return buildDeployCommand(p);
     case "notification":
       return `# Notify ${p.channel}: ${p.message}`;
     default:
@@ -427,9 +341,10 @@ function getStepScript(step: GraphNode): string {
 /** GitHub Actions step: name + run (or uses for checkout) */
 function renderStepForGithub(step: GraphNode): Record<string, unknown> {
   const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
-  const secretsEnv = Object.keys(step.data.secrets ?? {}).length > 0
-    ? Object.fromEntries(Object.keys(step.data.secrets).map((k) => [k, `\${{ secrets.${k} }}`]))
-    : undefined;
+  const secretsEnv =
+    Object.keys(step.data.secrets ?? {}).length > 0
+      ? Object.fromEntries(Object.keys(step.data.secrets).map((k) => [k, `\${{ secrets.${k} }}`]))
+      : undefined;
   const env = { ...(step.data.env ?? {}), ...(secretsEnv ?? {}) };
   const hasEnv = Object.keys(env).length > 0;
 
@@ -464,7 +379,13 @@ function renderStepScriptLines(step: GraphNode): string[] {
   let scripts: string[];
   if (step.type === "shell_command" && typeof p.script === "string" && p.script.includes("\n")) {
     const cd = p.workingDirectory ? `cd ${p.workingDirectory}` : null;
-    scripts = [...(cd ? [cd] : []), ...p.script.split("\n").map((l) => l.trim()).filter(Boolean)];
+    scripts = [
+      ...(cd ? [cd] : []),
+      ...p.script
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean),
+    ];
   } else {
     scripts = [getStepScript(step)];
   }
@@ -483,7 +404,7 @@ function gitlabRunnerConfig(runsOn: string): { image?: string; tags?: string[] }
 
 /** Azure DevOps step: uses typed tasks where applicable, falls back to script */
 function renderStepForAzure(step: GraphNode): Record<string, unknown> {
-  const p = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+  const p = step.data.params?.baseParameters ?? {};
   switch (step.type) {
     case "shell_command": {
       const entry: Record<string, unknown> = {
@@ -495,18 +416,6 @@ function renderStepForAzure(step: GraphNode): Record<string, unknown> {
       if (p.timeoutSeconds) entry.timeoutInMinutes = Math.ceil((p.timeoutSeconds as number) / 60);
       return entry;
     }
-    case "docker": {
-      const action = p.action as string;
-      if (action === "build" || action === "push") {
-        const inputs: Record<string, unknown> = { command: action };
-        if (p.image) inputs.repository = p.image;
-        if (p.dockerfile) inputs.Dockerfile = p.dockerfile;
-        if (p.buildContext) inputs.buildContext = p.buildContext;
-        if (p.registry) inputs.containerRegistry = p.registry;
-        return { task: "Docker@2", displayName: step.data.label, inputs };
-      }
-      return { script: buildDockerCommand(p), displayName: step.data.label };
-    }
     case "git": {
       if (p.action === "checkout") {
         const entry: Record<string, unknown> = { checkout: "self" };
@@ -514,37 +423,6 @@ function renderStepForAzure(step: GraphNode): Record<string, unknown> {
         return entry;
       }
       return { script: buildGitCommand(p), displayName: step.data.label };
-    }
-    case "test": {
-      if (p.runner === "dotnet_test") {
-        const inputs: Record<string, unknown> = { command: "test" };
-        if (p.testPattern) inputs.projects = p.testPattern;
-        const entry: Record<string, unknown> = { task: "DotNetCoreCLI@2", displayName: step.data.label, inputs };
-        if (p.continueOnError) entry.continueOnError = p.continueOnError;
-        return entry;
-      }
-      const entry: Record<string, unknown> = { script: buildTestCommand(p), displayName: step.data.label };
-      if (p.continueOnError) entry.continueOnError = p.continueOnError;
-      return entry;
-    }
-    case "build": {
-      if (p.tool === "dotnet") {
-        const inputs: Record<string, unknown> = { command: "build" };
-        if (p.workingDirectory) inputs.workingDirectory = p.workingDirectory;
-        return { task: "DotNetCoreCLI@2", displayName: step.data.label, inputs };
-      }
-      const entry: Record<string, unknown> = { script: buildBuildCommand(p), displayName: step.data.label };
-      if (p.workingDirectory) entry.workingDirectory = p.workingDirectory;
-      return entry;
-    }
-    case "deploy": {
-      if (p.target === "kubernetes") {
-        const inputs: Record<string, unknown> = { action: "deploy" };
-        if (p.namespace) inputs.namespace = p.namespace;
-        if (p.manifestPath) inputs.manifests = p.manifestPath;
-        return { task: "KubernetesManifest@1", displayName: step.data.label, inputs };
-      }
-      return { script: buildDeployCommand(p), displayName: step.data.label };
     }
     case "notification":
       return { script: `# Notify ${p.channel}: ${p.message}`, displayName: step.data.label };
@@ -689,18 +567,14 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       if (!prev) return prev;
       return {
         ...prev,
-        stages: prev.stages.map((s) =>
-          s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
-        ),
+        stages: prev.stages.map((s) => (s.id === activeStageId ? { ...s, jobs, jobEdges } : s)),
       };
     });
 
     // Restore pipeline canvas, refreshing the jobCount badge on the exited stage card
     const updatedJobCount = jobs.length;
     const restoredNodes = pipelineCanvasNodesRef.current.map((n) =>
-      n.id === activeStageId
-        ? { ...n, data: { ...(n.data as Record<string, unknown>), jobCount: updatedJobCount } }
-        : n,
+      n.id === activeStageId ? { ...n, data: { ...n.data, jobCount: updatedJobCount } } : n,
     );
 
     setNodes(restoredNodes);
@@ -749,9 +623,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
     // Update job data in stage canvas snapshot
     const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-      n.id === activeJobId
-        ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
-        : n,
+      n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
     );
 
     setNodes(updatedStageNodes);
@@ -770,9 +642,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
     // 2. Rebuild stage nodes with updated step data
     const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-      n.id === activeJobId
-        ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
-        : n,
+      n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
     );
 
     // 3. Derive jobs from updated stage nodes
@@ -783,17 +653,13 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       if (!prev) return prev;
       return {
         ...prev,
-        stages: prev.stages.map((s) =>
-          s.id === activeStageId ? { ...s, jobs, jobEdges } : s,
-        ),
+        stages: prev.stages.map((s) => (s.id === activeStageId ? { ...s, jobs, jobEdges } : s)),
       };
     });
 
     // 5. Restore pipeline canvas with updated jobCount badge
     const restoredPipelineNodes = pipelineCanvasNodesRef.current.map((n) =>
-      n.id === activeStageId
-        ? { ...n, data: { ...(n.data as Record<string, unknown>), jobCount: jobs.length } }
-        : n,
+      n.id === activeStageId ? { ...n, data: { ...n.data, jobCount: jobs.length } } : n,
     );
 
     setNodes(restoredPipelineNodes);
@@ -814,9 +680,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       // In job canvas: fold steps back into stage snapshot, then process stage
       const steps = rfStepNodesToSteps(getNodes());
       const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-        n.id === activeJobId
-          ? { ...n, data: { ...(n.data as Record<string, unknown>), steps } }
-          : n,
+        n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
       );
       const { jobs, jobEdges } = rfJobNodesToJobs(updatedStageNodes, stageCanvasEdgesRef.current);
       const allStages = (pipeline?.stages ?? []).map((s) =>
@@ -865,8 +729,8 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       if (draggedNode.type === "stageGroup") return;
       if (draggedNode.type !== "jobGroup") return;
 
-      const intersecting = getIntersectingNodes(draggedNode).filter((n) => n.type === "stageGroup");
-      const newTargetStage = intersecting[0] ?? null;
+      const intersecting = getIntersectingNodes(draggedNode).find((n) => n.type === "stageGroup");
+      const newTargetStage = intersecting ?? null;
       if (newTargetStage?.id !== dragOverStageRef.current) {
         if (dragOverStageRef.current)
           updateRFNodeData(dragOverStageRef.current, { dragOver: false });
@@ -979,7 +843,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
   // ── addStage ─────────────────────────────────────────────────────────────────
   const addStage = useCallback(
-    (name?: string, options?: { position?: { x: number; y: number }; afterNodeId?: string; noEdge?: boolean }) => {
+    (
+      name?: string,
+      options?: { position?: { x: number; y: number }; afterNodeId?: string; noEdge?: boolean },
+    ) => {
       const id = `stage-${Date.now()}`;
       const existingStages = nodes.filter((n) => n.type === "stageCard");
       const stageCount = existingStages.length;
@@ -995,13 +862,15 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       const sourcedIds = new Set(
         edges.filter((e) => stageIds.has(e.source) && stageIds.has(e.target)).map((e) => e.source),
       );
-      const lastStage = afterNode
-        ?? existingStages.find((n) => !sourcedIds.has(n.id))
-        ?? existingStages[stageCount - 1];
+      const lastStage =
+        afterNode ??
+        existingStages.find((n) => !sourcedIds.has(n.id)) ??
+        existingStages[stageCount - 1];
 
       // Position: explicit > derived from afterNode > auto-grid
-      const newPos = options?.position
-        ?? (afterNode
+      const newPos =
+        options?.position ??
+        (afterNode
           ? { x: afterNode.position.x + STAGE_CARD_WIDTH + 80, y: afterNode.position.y }
           : { x: 80 + stageCount * (STAGE_CARD_WIDTH + 80), y: 80 });
 
@@ -1010,10 +879,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
         if (!prev) return prev;
         return {
           ...prev,
-          stages: [
-            ...prev.stages,
-            { id, name: stageName, jobs: [], position: newPos },
-          ],
+          stages: [...prev.stages, { id, name: stageName, jobs: [], position: newPos }],
         };
       });
 
@@ -1095,7 +961,15 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     } finally {
       setStatus("idle");
     }
-  }, [projectId, pipelineId, pipelineStatus, pipelineTrigger, viewport, getCurrentStagesAndEdges, pipeline]);
+  }, [
+    projectId,
+    pipelineId,
+    pipelineStatus,
+    pipelineTrigger,
+    viewport,
+    getCurrentStagesAndEdges,
+    pipeline,
+  ]);
 
   // ── exportToYaml ─────────────────────────────────────────────────────────────
   const exportToYaml = useCallback(
@@ -1117,7 +991,8 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           for (const job of stage.jobs) {
             const jobEntry: Record<string, unknown> = { "runs-on": job.runsOn };
             const intraNeeds = jobNeedsMap[job.id] ?? [];
-            const crossNeeds = parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
+            const crossNeeds =
+              parentJobNames.length > 0 && intraNeeds.length === 0 ? parentJobNames : [];
             const needs = [...intraNeeds, ...crossNeeds];
             if (needs.length > 0) jobEntry.needs = needs;
             jobEntry.steps = job.steps.map((step) => renderStepForGithub(step));
@@ -1130,8 +1005,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           ? (() => {
               const t = pipelineTrigger;
               if (t.triggerType === "push") return { push: { branches: t.branches ?? ["main"] } };
-              if (t.triggerType === "pull_request") return { pull_request: { branches: t.branches ?? ["main"] } };
-              if (t.triggerType === "schedule") return { schedule: [{ cron: t.schedule ?? "0 0 * * *" }] };
+              if (t.triggerType === "pull_request")
+                return { pull_request: { branches: t.branches ?? ["main"] } };
+              if (t.triggerType === "schedule")
+                return { schedule: [{ cron: t.schedule ?? "0 0 * * *" }] };
               if (t.triggerType === "tag") return { push: { tags: t.tags ?? ["v*"] } };
               return "workflow_dispatch";
             })()
@@ -1194,7 +1071,9 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
           } else if (t.triggerType === "pull_request") {
             azDoc.pr = { branches: { include: t.branches ?? ["main"] } };
           } else if (t.triggerType === "schedule") {
-            azDoc.schedules = [{ cron: t.schedule ?? "0 0 * * *", always: false, branches: { include: ["main"] } }];
+            azDoc.schedules = [
+              { cron: t.schedule ?? "0 0 * * *", always: false, branches: { include: ["main"] } },
+            ];
           } else {
             azDoc.trigger = "none";
           }
@@ -1224,7 +1103,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       a.download = ext;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       URL.revokeObjectURL(url);
     },
     [getCurrentStagesAndEdges, pipeline, pipelineTrigger],
@@ -1252,10 +1131,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
   }, []);
 
   const updateJob = useCallback(
-    (
-      jobId: string,
-      patch: { name?: string; runsOn?: string; steps?: GraphNode[] },
-    ) => {
+    (jobId: string, patch: { name?: string; runsOn?: string; steps?: GraphNode[] }) => {
       updateRFNodeData(jobId, patch);
     },
     [updateRFNodeData],

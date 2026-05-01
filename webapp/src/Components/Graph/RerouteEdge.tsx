@@ -92,12 +92,12 @@ export const RerouteEdge: React.FC<EdgeProps> = ({
 
             const onUp = () => {
                 el.releasePointerCapture(pointerId);
-                window.removeEventListener("pointermove", onMove);
-                window.removeEventListener("pointerup", onUp);
+                globalThis.removeEventListener("pointermove", onMove);
+                globalThis.removeEventListener("pointerup", onUp);
             };
 
-            window.addEventListener("pointermove", onMove);
-            window.addEventListener("pointerup", onUp);
+            globalThis.addEventListener("pointermove", onMove);
+            globalThis.addEventListener("pointerup", onUp);
         },
         [id, setEdges, screenToFlowPosition],
     );
