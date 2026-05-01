@@ -64,7 +64,7 @@ const PagePipelines: React.FC = () => {
 
     const handleDelete = async (pipelineId: string) => {
         if (!projectId) return;
-        if (!window.confirm("Supprimer cette pipeline ?")) return;
+        if (!globalThis.confirm("Supprimer cette pipeline ?")) return;
         try {
             await api.pipelines.delete(projectId, pipelineId);
             await fetchData();

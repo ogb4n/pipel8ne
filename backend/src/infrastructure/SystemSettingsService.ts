@@ -20,7 +20,7 @@ export class SystemSettingsService implements ISystemSettingsService {
       { $setOnInsert: { key: "global", registrationEnabled: true } },
       { upsert: true, new: true },
     );
-    return { registrationEnabled: doc!.registrationEnabled };
+    return { registrationEnabled: doc.registrationEnabled };
   }
 
   /**
@@ -32,6 +32,6 @@ export class SystemSettingsService implements ISystemSettingsService {
       { $set: data },
       { upsert: true, new: true },
     );
-    return { registrationEnabled: doc!.registrationEnabled };
+    return { registrationEnabled: doc.registrationEnabled };
   }
 }

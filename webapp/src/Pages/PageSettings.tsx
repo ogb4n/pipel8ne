@@ -26,141 +26,141 @@ export const SETTINGS_SECTIONS: {
   icon: ReactNode;
   adminOnly?: boolean;
 }[] = [
-  {
-    id: "profile",
-    label: "Profil",
-    description: "Informations de votre compte",
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="8" cy="5" r="3" />
-        <path d="M1.5 14.5c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" />
-      </svg>
-    ),
-  },
-  {
-    id: "appearance",
-    label: "Apparence",
-    description: "Thème et affichage",
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="8" cy="8" r="6.5" />
-        <path
-          d="M8 1.5V8h6.5A6.5 6.5 0 0 0 8 1.5z"
-          fill="currentColor"
-          stroke="none"
-          opacity="0.35"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: "about",
-    label: "À propos",
-    description: "Version et informations",
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="8" cy="8" r="6.5" />
-        <line x1="8" y1="7" x2="8" y2="11" />
-        <circle cx="8" cy="5" r="0.5" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    id: "api",
-    label: "API",
-    description: "Accès programmatique à l'API",
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="1.5" y="4.5" width="13" height="7" rx="1.5" />
-        <line x1="4" y1="8" x2="6" y2="8" />
-        <line x1="7.5" y1="8" x2="9.5" y2="8" />
-        <line x1="11" y1="8" x2="12" y2="8" />
-      </svg>
-    ),
-  },
-  {
-    id: "git",
-    label: "Git",
-    description: "Connexions GitHub, GitLab & Azure DevOps",
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="4" cy="12" r="1.5" />
-        <circle cx="12" cy="4" r="1.5" />
-        <circle cx="12" cy="12" r="1.5" />
-        <path d="M4 10.5V6a2 2 0 0 1 2-2h2.5" />
-        <path d="M12 5.5v5" />
-      </svg>
-    ),
-  },
-  {
-    id: "users",
-    label: "Utilisateurs",
-    description: "Gestion des utilisateurs",
-    adminOnly: true,
-    icon: (
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="5.5" cy="5" r="2.5" />
-        <path d="M1 13.5c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" />
-        <circle cx="11.5" cy="5" r="2" />
-        <path d="M13.5 13.5c0-2.209-1.791-4-4-4" />
-      </svg>
-    ),
-  },
-];
+    {
+      id: "profile",
+      label: "Profil",
+      description: "Informations de votre compte",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="8" cy="5" r="3" />
+          <path d="M1.5 14.5c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" />
+        </svg>
+      ),
+    },
+    {
+      id: "appearance",
+      label: "Apparence",
+      description: "Thème et affichage",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="8" cy="8" r="6.5" />
+          <path
+            d="M8 1.5V8h6.5A6.5 6.5 0 0 0 8 1.5z"
+            fill="currentColor"
+            stroke="none"
+            opacity="0.35"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "about",
+      label: "À propos",
+      description: "Version et informations",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="8" cy="8" r="6.5" />
+          <line x1="8" y1="7" x2="8" y2="11" />
+          <circle cx="8" cy="5" r="0.5" fill="currentColor" stroke="none" />
+        </svg>
+      ),
+    },
+    {
+      id: "api",
+      label: "API",
+      description: "Accès programmatique à l'API",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="1.5" y="4.5" width="13" height="7" rx="1.5" />
+          <line x1="4" y1="8" x2="6" y2="8" />
+          <line x1="7.5" y1="8" x2="9.5" y2="8" />
+          <line x1="11" y1="8" x2="12" y2="8" />
+        </svg>
+      ),
+    },
+    {
+      id: "git",
+      label: "Git",
+      description: "Connexions GitHub, GitLab & Azure DevOps",
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="4" cy="12" r="1.5" />
+          <circle cx="12" cy="4" r="1.5" />
+          <circle cx="12" cy="12" r="1.5" />
+          <path d="M4 10.5V6a2 2 0 0 1 2-2h2.5" />
+          <path d="M12 5.5v5" />
+        </svg>
+      ),
+    },
+    {
+      id: "users",
+      label: "Utilisateurs",
+      description: "Gestion des utilisateurs",
+      adminOnly: true,
+      icon: (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="5.5" cy="5" r="2.5" />
+          <path d="M1 13.5c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" />
+          <circle cx="11.5" cy="5" r="2" />
+          <path d="M13.5 13.5c0-2.209-1.791-4-4-4" />
+        </svg>
+      ),
+    },
+  ];
 
 /* ─────────────────────────────────────────────
    Section: Profile
@@ -212,7 +212,7 @@ function SectionProfile() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div>
       <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -248,7 +248,7 @@ function SectionAppearance() {
           <ThemeCard
             label="Clair"
             selected={theme === "light"}
-            onClick={theme !== "light" ? toggleTheme : undefined}
+            onClick={theme === "light" ? undefined : toggleTheme}
             preview={
               <div className="w-full h-10 rounded bg-white border border-zinc-200 flex flex-col gap-1 p-1.5">
                 <div className="w-1/2 h-1.5 rounded-sm bg-zinc-300" />
@@ -259,7 +259,7 @@ function SectionAppearance() {
           <ThemeCard
             label="Sombre"
             selected={theme === "dark"}
-            onClick={theme !== "dark" ? toggleTheme : undefined}
+            onClick={theme === "dark" ? undefined : toggleTheme}
             preview={
               <div className="w-full h-10 rounded bg-zinc-900 border border-zinc-700 flex flex-col gap-1 p-1.5">
                 <div className="w-1/2 h-1.5 rounded-sm bg-zinc-600" />
@@ -278,28 +278,26 @@ function ThemeCard({
   selected,
   onClick,
   preview,
-}: {
+}: Readonly<{
   label: string;
   selected: boolean;
   onClick?: () => void;
   preview: ReactNode;
-}) {
+}>) {
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left ${
-        selected
-          ? "border-accent-500 bg-accent-500/5"
-          : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
-      }`}
+      className={`flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left ${selected
+        ? "border-accent-500 bg-accent-500/5"
+        : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
+        }`}
     >
       {preview}
       <div className="flex items-center gap-1.5">
         <span
-          className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
-            selected ? "border-accent-500" : "border-zinc-300 dark:border-zinc-600"
-          }`}
+          className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${selected ? "border-accent-500" : "border-zinc-300 dark:border-zinc-600"
+            }`}
         >
           {selected && <span className="w-1.5 h-1.5 rounded-full bg-accent-500 block" />}
         </span>
@@ -343,7 +341,7 @@ function SectionAbout() {
   );
 }
 
-function AboutRow({ label, value }: { label: string; value: string }) {
+function AboutRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-white dark:bg-zinc-900">
       <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
@@ -526,11 +524,10 @@ function SectionApiKeys() {
                     {key.name}
                   </span>
                   <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      key.isRevoked
-                        ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400"
-                        : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"
-                    }`}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${key.isRevoked
+                      ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400"
+                      : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"
+                      }`}
                   >
                     {key.isRevoked ? "Révoquée" : "Actif"}
                   </span>
@@ -564,7 +561,7 @@ function SectionApiKeys() {
                 <button
                   onClick={() => {
                     if (
-                      window.confirm(
+                      globalThis.confirm(
                         `Supprimer la clé "${key.name}" ? Cette action est irréversible.`,
                       )
                     ) {
@@ -704,16 +701,14 @@ function SectionUsers() {
             void handleToggleRegistration();
           }}
           disabled={loadingSettings}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-            registrationEnabled ? "bg-accent-500" : "bg-zinc-300 dark:bg-zinc-600"
-          }`}
+          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${registrationEnabled ? "bg-accent-500" : "bg-zinc-300 dark:bg-zinc-600"
+            }`}
           role="switch"
           aria-checked={registrationEnabled}
         >
           <span
-            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
-              registrationEnabled ? "translate-x-4" : "translate-x-0"
-            }`}
+            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${registrationEnabled ? "translate-x-4" : "translate-x-0"
+              }`}
           />
         </button>
       </div>
@@ -732,11 +727,10 @@ function SectionUsers() {
             {users.map((u) => (
               <div
                 key={u.id}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 ${
-                  u.id === currentUser?.id
-                    ? "bg-accent-500/5 dark:bg-accent-500/10"
-                    : "bg-white dark:bg-zinc-900"
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 ${u.id === currentUser?.id
+                  ? "bg-accent-500/5 dark:bg-accent-500/10"
+                  : "bg-white dark:bg-zinc-900"
+                  }`}
               >
                 <div className="flex-1 min-w-0 space-y-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -893,7 +887,7 @@ function SectionGitConnections() {
       setShowOnboarding(true);
       return;
     }
-    window.location.href = config.authUrl;
+    globalThis.location.href = config.authUrl;
   }
 
   async function handleDisconnect(conn: GitConnection) {
@@ -915,120 +909,119 @@ function SectionGitConnections() {
 
   return (
     <>
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Connexions Git</h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-          Connectez vos comptes GitHub, GitLab et Azure DevOps pour importer vos dépôts.
-        </p>
-      </div>
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Connexions Git</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Connectez vos comptes GitHub, GitLab et Azure DevOps pour importer vos dépôts.
+          </p>
+        </div>
 
-      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-      {loading ? (
-        <p className="text-xs text-zinc-400">Chargement…</p>
-      ) : (
-        <>
-          {/* Connected accounts */}
-          {connections.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                Comptes connectés ({connections.length})
-              </p>
-              <div className="border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden max-w-2xl">
-                {connections.map((conn) => {
-                  const meta = PROVIDER_META[conn.provider];
-                  return (
-                    <div
-                      key={conn.id}
-                      className="flex items-center gap-3 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-white dark:bg-zinc-900"
-                    >
+        {loading ? (
+          <p className="text-xs text-zinc-400">Chargement…</p>
+        ) : (
+          <>
+            {/* Connected accounts */}
+            {connections.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  Comptes connectés ({connections.length})
+                </p>
+                <div className="border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden max-w-2xl">
+                  {connections.map((conn) => {
+                    const meta = PROVIDER_META[conn.provider];
+                    return (
                       <div
-                        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${meta.color}`}
+                        key={conn.id}
+                        className="flex items-center gap-3 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-white dark:bg-zinc-900"
                       >
-                        {meta.icon}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            {meta.label}
-                          </span>
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
-                            Connecté
-                          </span>
+                        <div
+                          className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${meta.color}`}
+                        >
+                          {meta.icon}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {conn.avatarUrl && (
-                            <img src={conn.avatarUrl} alt="" className="w-4 h-4 rounded-full" />
-                          )}
-                          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                            {conn.providerUsername}
-                          </span>
-                          <span className="text-[11px] text-zinc-400 dark:text-zinc-600">
-                            Connecté le {new Date(conn.createdAt).toLocaleDateString("fr-FR")}
-                          </span>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                              {meta.label}
+                            </span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
+                              Connecté
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {conn.avatarUrl && (
+                              <img src={conn.avatarUrl} alt="" className="w-4 h-4 rounded-full" />
+                            )}
+                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                              {conn.providerUsername}
+                            </span>
+                            <span className="text-[11px] text-zinc-400 dark:text-zinc-600">
+                              Connecté le {new Date(conn.createdAt).toLocaleDateString("fr-FR")}
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => {
+                            void handleDisconnect(conn);
+                          }}
+                          disabled={disconnecting === conn.id}
+                          className="shrink-0 px-2 py-1 text-[11px] font-medium rounded border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-50"
+                        >
+                          {disconnecting === conn.id ? "Déconnexion…" : "Déconnecter"}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          void handleDisconnect(conn);
-                        }}
-                        disabled={disconnecting === conn.id}
-                        className="shrink-0 px-2 py-1 text-[11px] font-medium rounded border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-50"
-                      >
-                        {disconnecting === conn.id ? "Déconnexion…" : "Déconnecter"}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Available providers */}
-          {oauthConfig && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                Fournisseurs disponibles
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {(
-                  Object.entries(oauthConfig) as [
-                    GitProvider,
-                    { enabled: boolean; authUrl: string },
-                  ][]
-                ).map(([provider, config]) => {
-                  const meta = PROVIDER_META[provider];
-                  const connected = connectedProviders.has(provider);
-                  return (
-                    <button
-                      key={provider}
-                      onClick={() => { if (!connected) handleConnect(provider); }}
-                      disabled={connected}
-                      className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border transition-colors ${
-                        connected
+            {/* Available providers */}
+            {oauthConfig && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  Fournisseurs disponibles
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {(
+                    Object.entries(oauthConfig) as [
+                      GitProvider,
+                      { enabled: boolean; authUrl: string },
+                    ][]
+                  ).map(([provider, config]) => {
+                    const meta = PROVIDER_META[provider];
+                    const connected = connectedProviders.has(provider);
+                    return (
+                      <button
+                        key={provider}
+                        onClick={() => { if (!connected) handleConnect(provider); }}
+                        disabled={connected}
+                        className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border transition-colors ${connected
                           ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 cursor-default"
                           : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
-                      }`}
-                      title={
-                        connected
-                          ? `Déjà connecté à ${meta.label}`
-                          : `Se connecter à ${meta.label}`
-                      }
-                    >
-                      <span className="text-zinc-700 dark:text-zinc-300">{meta.icon}</span>
-                      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        {connected ? `${meta.label} connecté` : `Connecter ${meta.label}`}
-                      </span>
-                    </button>
-                  );
-                })}
+                          }`}
+                        title={
+                          connected
+                            ? `Déjà connecté à ${meta.label}`
+                            : `Se connecter à ${meta.label}`
+                        }
+                      >
+                        <span className="text-zinc-700 dark:text-zinc-300">{meta.icon}</span>
+                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          {connected ? `${meta.label} connecté` : `Connecter ${meta.label}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            )}
+          </>
+        )}
+      </div>
 
       {showOnboarding && (
         <GitOnboardingModal
@@ -1060,7 +1053,7 @@ export default function PageSettings() {
   const navigate = useNavigate();
   const { isAdmin, isLoading } = useAuth();
   const visibleSections = SETTINGS_SECTIONS.filter((s) => !s.adminOnly || isAdmin);
-  const activeSection = SETTINGS_SECTIONS.find((s) => s.id === section)
+  const activeSection = SETTINGS_SECTIONS.some((s) => s.id === section)
     ? (section as SettingsSection)
     : "profile";
 
@@ -1103,11 +1096,10 @@ export default function PageSettings() {
             <Link
               key={item.id}
               to={`/settings/${item.id}`}
-              className={`flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors ${
-                activeSection === item.id
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
-                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
+              className={`flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors ${activeSection === item.id
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
+                : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
             >
               <span className="shrink-0">{item.icon}</span>
               {item.label}

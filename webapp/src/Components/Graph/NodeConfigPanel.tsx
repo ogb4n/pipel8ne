@@ -6,12 +6,7 @@ import type {
     NodeType,
     NodeParams,
     Shell,
-    DockerAction,
     GitAction,
-    TestRunner,
-    BuildTool,
-    DeployTarget,
-    RolloutStrategy,
     NotificationChannel,
     NotificationTrigger,
 } from "../../Api/types";
@@ -168,67 +163,6 @@ const ShellForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ 
     </FieldGroup>
 );
 
-const DockerForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => {
-    const action = (p.action as DockerAction) ?? "build";
-    return (
-        <FieldGroup>
-            <div>
-                <Label>Action</Label>
-                <Select value={action} onChange={(e) => set("action", e.target.value)}>
-                    {(["build", "run", "push", "pull", "compose_up", "compose_down"] as DockerAction[]).map((a) => (
-                        <option key={a} value={a}>{a}</option>
-                    ))}
-                </Select>
-            </div>
-            {(action === "build") && (
-                <>
-                    <div>
-                        <Label>Dockerfile</Label>
-                        <Input value={(p.dockerfile as string) ?? "Dockerfile"} onChange={(e) => set("dockerfile", e.target.value)} />
-                    </div>
-                    <div>
-                        <Label>Contexte de build</Label>
-                        <Input value={(p.buildContext as string) ?? "."} onChange={(e) => set("buildContext", e.target.value)} />
-                    </div>
-                    <div>
-                        <Label>Tags</Label>
-                        <TagsInput value={(p.tags as string[]) ?? []} onChange={(v) => set("tags", v)} placeholder="myapp:latest" />
-                    </div>
-                </>
-            )}
-            {(action === "push" || action === "pull") && (
-                <>
-                    <div>
-                        <Label>Image</Label>
-                        <Input value={(p.image as string) ?? ""} onChange={(e) => set("image", e.target.value)} placeholder="registry/image:tag" />
-                    </div>
-                    <div>
-                        <Label>Registry</Label>
-                        <Input value={(p.registry as string) ?? ""} onChange={(e) => set("registry", e.target.value)} placeholder="docker.io" />
-                    </div>
-                </>
-            )}
-            {action === "run" && (
-                <>
-                    <div>
-                        <Label>Image</Label>
-                        <Input value={(p.image as string) ?? ""} onChange={(e) => set("image", e.target.value)} placeholder="nginx:latest" />
-                    </div>
-                    <div>
-                        <Label>Commande (optionnel)</Label>
-                        <Input value={(p.command as string) ?? ""} onChange={(e) => set("command", e.target.value)} />
-                    </div>
-                </>
-            )}
-            {(action === "compose_up" || action === "compose_down") && (
-                <div>
-                    <Label>Fichier Compose</Label>
-                    <Input value={(p.composeFile as string) ?? "docker-compose.yml"} onChange={(e) => set("composeFile", e.target.value)} />
-                </div>
-            )}
-        </FieldGroup>
-    );
-};
 
 const GitForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => {
     const action = (p.action as GitAction) ?? "clone";
@@ -280,132 +214,6 @@ const GitForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p,
     );
 };
 
-const TestForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => (
-    <FieldGroup>
-        <div>
-            <Label>Runner</Label>
-            <Select value={(p.runner as TestRunner) ?? "jest"} onChange={(e) => set("runner", e.target.value)}>
-                {(["jest", "vitest", "pytest", "go_test", "cargo_test", "dotnet_test", "custom"] as TestRunner[]).map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                ))}
-            </Select>
-        </div>
-        {p.runner === "custom" && (
-            <div>
-                <Label>Commande</Label>
-                <Input value={(p.command as string) ?? ""} onChange={(e) => set("command", e.target.value)} placeholder="npm run test:ci" />
-            </div>
-        )}
-        <div>
-            <Label>Pattern de tests (glob)</Label>
-            <Input value={(p.testPattern as string) ?? ""} onChange={(e) => set("testPattern", e.target.value)} placeholder="**/*.test.ts" />
-        </div>
-        <div>
-            <Label>Seuil de couverture (%)</Label>
-            <Input type="number" value={(p.coverageThreshold as number) ?? ""} onChange={(e) => set("coverageThreshold", e.target.value ? Number(e.target.value) : undefined)} placeholder="80" min={0} max={100} />
-        </div>
-        <Checkbox label="Continuer en cas d'erreur" checked={!!p.continueOnError} onChange={(e) => set("continueOnError", e.target.checked)} />
-    </FieldGroup>
-);
-
-const BuildForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => (
-    <FieldGroup>
-        <div>
-            <Label>Outil de build</Label>
-            <Select value={(p.tool as BuildTool) ?? "npm"} onChange={(e) => set("tool", e.target.value)}>
-                {(["npm", "yarn", "pnpm", "maven", "gradle", "cargo", "go", "dotnet", "make", "custom"] as BuildTool[]).map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                ))}
-            </Select>
-        </div>
-        {p.tool === "custom" ? (
-            <div>
-                <Label>Commande</Label>
-                <Input value={(p.command as string) ?? ""} onChange={(e) => set("command", e.target.value)} placeholder="make release" />
-            </div>
-        ) : (
-            <div>
-                <Label>Target / script</Label>
-                <Input value={(p.target as string) ?? ""} onChange={(e) => set("target", e.target.value)} placeholder="build" />
-            </div>
-        )}
-        <div>
-            <Label>Répertoire de travail</Label>
-            <Input value={(p.workingDirectory as string) ?? ""} onChange={(e) => set("workingDirectory", e.target.value)} placeholder="." />
-        </div>
-        <div>
-            <Label>Dossier de sortie</Label>
-            <Input value={(p.outputPath as string) ?? ""} onChange={(e) => set("outputPath", e.target.value)} placeholder="dist/" />
-        </div>
-        <div>
-            <Label>Version du runtime</Label>
-            <Input value={(p.runtimeVersion as string) ?? ""} onChange={(e) => set("runtimeVersion", e.target.value)} placeholder="20.x" />
-        </div>
-    </FieldGroup>
-);
-
-const DeployForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => {
-    const target = (p.target as DeployTarget) ?? "kubernetes";
-    return (
-        <FieldGroup>
-            <div>
-                <Label>Cible de déploiement</Label>
-                <Select value={target} onChange={(e) => set("target", e.target.value)}>
-                    {(["kubernetes", "aws_ecs", "aws_lambda", "gcp_run", "azure_app", "ssh", "custom"] as DeployTarget[]).map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                    ))}
-                </Select>
-            </div>
-            <div>
-                <Label>Environnement</Label>
-                <Input value={(p.environment as string) ?? ""} onChange={(e) => set("environment", e.target.value)} placeholder="staging" />
-            </div>
-            {target === "kubernetes" && (
-                <>
-                    <div>
-                        <Label>Namespace</Label>
-                        <Input value={(p.namespace as string) ?? "default"} onChange={(e) => set("namespace", e.target.value)} />
-                    </div>
-                    <div>
-                        <Label>Chemin du manifest</Label>
-                        <Input value={(p.manifestPath as string) ?? ""} onChange={(e) => set("manifestPath", e.target.value)} placeholder="k8s/deployment.yml" />
-                    </div>
-                    <div>
-                        <Label>Stratégie de rollout</Label>
-                        <Select value={(p.rolloutStrategy as RolloutStrategy) ?? "rolling"} onChange={(e) => set("rolloutStrategy", e.target.value)}>
-                            {(["rolling", "blue_green", "canary", "recreate"] as RolloutStrategy[]).map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </Select>
-                    </div>
-                </>
-            )}
-            {target === "ssh" && (
-                <>
-                    <div>
-                        <Label>Hôte SSH</Label>
-                        <Input value={(p.sshHost as string) ?? ""} onChange={(e) => set("sshHost", e.target.value)} placeholder="server.example.com" />
-                    </div>
-                    <div>
-                        <Label>Utilisateur SSH</Label>
-                        <Input value={(p.sshUser as string) ?? ""} onChange={(e) => set("sshUser", e.target.value)} placeholder="deploy" />
-                    </div>
-                    <div>
-                        <Label>Chemin distant</Label>
-                        <Input value={(p.remotePath as string) ?? ""} onChange={(e) => set("remotePath", e.target.value)} placeholder="/var/www/app" />
-                    </div>
-                </>
-            )}
-            {(target === "aws_ecs" || target === "gcp_run" || target === "azure_app") && (
-                <div>
-                    <Label>Nom du service</Label>
-                    <Input value={(p.serviceName as string) ?? ""} onChange={(e) => set("serviceName", e.target.value)} />
-                </div>
-            )}
-        </FieldGroup>
-    );
-};
-
 const NotificationForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }> = ({ p, set }) => (
     <FieldGroup>
         <div>
@@ -440,11 +248,7 @@ const NotificationForm: React.FC<{ p: PP; set: (k: string, v: unknown) => void }
 const ParamsForm: React.FC<{ type: NodeType; p: PP; set: (k: string, v: unknown) => void }> = ({ type, p, set }) => {
     switch (type) {
         case "shell_command": return <ShellForm p={p} set={set} />;
-        case "docker": return <DockerForm p={p} set={set} />;
         case "git": return <GitForm p={p} set={set} />;
-        case "test": return <TestForm p={p} set={set} />;
-        case "build": return <BuildForm p={p} set={set} />;
-        case "deploy": return <DeployForm p={p} set={set} />;
         case "notification": return <NotificationForm p={p} set={set} />;
     }
 };

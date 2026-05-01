@@ -24,7 +24,7 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
     const [validationError, setValidationError] = useState<string | null>(null);
 
     // Config active dérivée du provider sélectionné — pattern "registry lookup"
-    const config = PROVIDER_CONFIGS[provider] ?? PROVIDER_CONFIGS["other"]!;
+    const config = PROVIDER_CONFIGS[provider] ?? PROVIDER_CONFIGS["other"];
 
     // Quand le provider change : pré-remplir le libellé si non touché, vider la valeur secrète
     useEffect(() => {
@@ -46,7 +46,7 @@ const CreateCredentialModal: React.FC<Props> = ({ onClose, onCreated }) => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (validationError) return;
         setCreating(true);

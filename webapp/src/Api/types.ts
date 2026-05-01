@@ -40,14 +40,7 @@ export interface Project {
   gitRepository?: ProjectGitRepository;
 }
 // ── Node type discriminator ─────────────────────────────────────────────────
-export type NodeType =
-  | "shell_command"
-  | "docker"
-  | "git"
-  | "test"
-  | "build"
-  | "deploy"
-  | "notification";
+export type NodeType = "shell_command" | "git" | "notification";
 
 // ── Typed params — mirror of backend Domain node params ─────────────────────
 export type TriggerType = "push" | "pull_request" | "schedule" | "manual" | "tag";
@@ -67,18 +60,6 @@ export interface ShellCommandNodeParams {
   timeoutSeconds?: number;
 }
 
-export type DockerAction = "build" | "run" | "push" | "pull" | "compose_up" | "compose_down";
-export interface DockerNodeParams {
-  action: DockerAction;
-  image?: string;
-  dockerfile?: string;
-  buildContext?: string;
-  tags?: string[];
-  registry?: string;
-  command?: string;
-  composeFile?: string;
-}
-
 export type GitAction = "clone" | "checkout" | "pull" | "fetch" | "tag" | "push";
 export interface GitNodeParams {
   action: GitAction;
@@ -88,63 +69,6 @@ export interface GitNodeParams {
   depth?: number;
   tagName?: string;
   remote?: string;
-}
-
-export type TestRunner =
-  | "jest"
-  | "vitest"
-  | "pytest"
-  | "go_test"
-  | "cargo_test"
-  | "dotnet_test"
-  | "custom";
-export interface TestNodeParams {
-  runner: TestRunner;
-  command?: string;
-  testPattern?: string;
-  coverageThreshold?: number;
-  continueOnError?: boolean;
-}
-
-export type BuildTool =
-  | "npm"
-  | "yarn"
-  | "pnpm"
-  | "maven"
-  | "gradle"
-  | "cargo"
-  | "go"
-  | "dotnet"
-  | "make"
-  | "custom";
-export interface BuildNodeParams {
-  tool: BuildTool;
-  target?: string;
-  command?: string;
-  workingDirectory?: string;
-  outputPath?: string;
-  runtimeVersion?: string;
-}
-
-export type DeployTarget =
-  | "kubernetes"
-  | "aws_ecs"
-  | "aws_lambda"
-  | "gcp_run"
-  | "azure_app"
-  | "ssh"
-  | "custom";
-export type RolloutStrategy = "rolling" | "blue_green" | "canary" | "recreate";
-export interface DeployNodeParams {
-  target: DeployTarget;
-  environment: string;
-  namespace?: string;
-  manifestPath?: string;
-  rolloutStrategy?: RolloutStrategy;
-  sshHost?: string;
-  sshUser?: string;
-  remotePath?: string;
-  serviceName?: string;
 }
 
 export type NotificationChannel = "slack" | "teams" | "email" | "discord" | "webhook" | "pagerduty";
@@ -159,11 +83,7 @@ export interface NotificationNodeParams {
 /** Union of all typed params, keyed by node type */
 export type NodeParamsByType = {
   shell_command: ShellCommandNodeParams;
-  docker: DockerNodeParams;
   git: GitNodeParams;
-  test: TestNodeParams;
-  build: BuildNodeParams;
-  deploy: DeployNodeParams;
   notification: NotificationNodeParams;
 };
 

@@ -7,9 +7,8 @@ import PageLogin from "./Pages/PageLogin";
 import PageProjects from "./Pages/PageProjects";
 import PagePipelines from "./Pages/PagePipelines";
 import PageGraph from "./Pages/PageGraph";
-import PageSettings from "./Pages/PageSettings";
+import PageSettings, { SETTINGS_SECTIONS } from "./Pages/PageSettings";
 import PageOAuthCallback from "./Pages/PageOAuthCallback";
-import { SETTINGS_SECTIONS } from "./Pages/PageSettings";
 import "./App.css";
 
 function SettingsDropdown() {
