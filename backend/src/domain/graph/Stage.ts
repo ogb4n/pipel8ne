@@ -1,4 +1,5 @@
 import { Job } from "./Job.js";
+import { Edge } from "./Edge.js";
 export interface Stage {
   id: string;
   name: string;
@@ -6,4 +7,6 @@ export interface Stage {
   jobs: Job[];
   /** Canvas position of the stage group node */
   position: { x: number; y: number };
+  /** Dependencies between jobs within this stage */
+  jobEdges?: Edge[];
 }

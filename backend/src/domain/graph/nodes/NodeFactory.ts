@@ -15,16 +15,8 @@ import type { Node } from "../Node.js";
 import { BaseNode } from "./BaseNode.js";
 import { ShellCommandNode } from "./ShellCommandNode.js";
 import type { ShellCommandNodeParams } from "./ShellCommandNode.js";
-import { DockerNode } from "./DockerNode.js";
-import type { DockerNodeParams } from "./DockerNode.js";
 import { GitNode } from "./GitNode.js";
 import type { GitNodeParams } from "./GitNode.js";
-import { TestNode } from "./TestNode.js";
-import type { TestNodeParams } from "./TestNode.js";
-import { BuildNode } from "./BuildNode.js";
-import type { BuildNodeParams } from "./BuildNode.js";
-import { DeployNode } from "./DeployNode.js";
-import type { DeployNodeParams } from "./DeployNode.js";
 import { NotificationNode } from "./NotificationNode.js";
 import type { NotificationNodeParams } from "./NotificationNode.js";
 
@@ -52,20 +44,8 @@ export class NodeFactory {
           raw as unknown as ShellCommandNodeParams,
         );
 
-      case "docker":
-        return new DockerNode(id, positionX, positionY, data, raw as unknown as DockerNodeParams);
-
       case "git":
         return new GitNode(id, positionX, positionY, data, raw as unknown as GitNodeParams);
-
-      case "test":
-        return new TestNode(id, positionX, positionY, data, raw as unknown as TestNodeParams);
-
-      case "build":
-        return new BuildNode(id, positionX, positionY, data, raw as unknown as BuildNodeParams);
-
-      case "deploy":
-        return new DeployNode(id, positionX, positionY, data, raw as unknown as DeployNodeParams);
 
       case "notification":
         return new NotificationNode(

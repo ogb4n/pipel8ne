@@ -1,6 +1,18 @@
 import { GitProvider } from "./GitConnection.js";
 
 /**
+ * Un fichier de pipeline CI/CD récupéré depuis un repo Git.
+ */
+export interface PipelineFile {
+  /** Nom court (sans extension) utilisé comme nom de pipeline */
+  name: string;
+  /** Chemin complet dans le repo */
+  path: string;
+  /** Contenu brut du fichier YAML */
+  content: string;
+}
+
+/**
  * Représentation d'un repository Git récupéré depuis une plateforme.
  */
 export interface GitRepository {
@@ -44,4 +56,10 @@ export interface IGitPlatformAdapter {
    * Récupère la liste des repositories accessibles par l'utilisateur.
    */
   listRepositories(accessToken: string): Promise<GitRepository[]>;
+
+  /**
+   * Récupère les fichiers de pipeline CI/CD présents dans un repo.
+   * Retourne un tableau vide si aucun fichier trouvé.
+   */
+  listPipelineFiles(accessToken: string, fullName: string): Promise<PipelineFile[]>;
 }

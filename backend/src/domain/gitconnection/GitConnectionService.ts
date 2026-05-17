@@ -1,5 +1,5 @@
 import { IGitConnectionRepository } from "./IGitConnectionRepository.js";
-import { IGitPlatformAdapter, GitRepository } from "./IGitPlatformAdapter.js";
+import { IGitPlatformAdapter, GitRepository, PipelineFile } from "./IGitPlatformAdapter.js";
 import { ISecretsService } from "../graph/ISecretsService.js";
 import { GitConnection, GitProvider, PublicGitConnection } from "./GitConnection.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
@@ -138,6 +138,23 @@ export class GitConnectionService {
     const accessToken = this.secretsService.decrypt(conn.encryptedAccessToken);
     const adapter = this.getAdapter(conn.provider);
     return adapter.listRepositories(accessToken);
+  }
+
+  /**
+   * Récupère les fichiers de pipeline CI/CD d'un repo en trouvant automatiquement
+   * la connexion Git de l'utilisateur pour le provider donné.
+   */
+  async listPipelineFiles(
+    provider: GitProvider,
+    fullName: string,
+    requestingUserId: string,
+  ): Promise<PipelineFile[]> {
+    const conn = await this.gitConnectionRepository.findByUserAndProvider(requestingUserId, provider);
+    if (!conn) throw new NotFoundError(`Aucune connexion Git pour ${provider}`);
+
+    const accessToken = this.secretsService.decrypt(conn.encryptedAccessToken);
+    const adapter = this.getAdapter(provider);
+    return adapter.listPipelineFiles(accessToken, fullName);
   }
 
 }

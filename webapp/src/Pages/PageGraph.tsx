@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
     ReactFlow,
@@ -13,6 +13,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { usePipeline } from "../hooks/usePipeline";
 import type { TriggerType } from "../Api/types";
+import { api } from "../Api/client";
 import { nodeTypes } from "../Components/Graph/nodeTypes";
 import { NodeConfigPanel } from "../Components/Graph/NodeConfigPanel";
 import { GraphActionsContext } from "../Components/Graph/GraphActionsContext";
@@ -49,12 +50,35 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
     const [exportFormat, setExportFormat] = useState<"github" | "gitlab" | "azure">("github");
     const [triggerPanelOpen, setTriggerPanelOpen] = useState(false);
     const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+    const [projectProvider, setProjectProvider] = useState<"github" | "gitlab" | "azure" | null>(null);
 
     const formatLabels: Record<"github" | "gitlab" | "azure", string> = {
         github: "GitHub Actions",
         gitlab: "GitLab CI",
         azure: "Azure DevOps",
     };
+
+    const providerToFormat: Record<string, "github" | "gitlab" | "azure"> = {
+        github: "github",
+        gitlab: "gitlab",
+        azure_devops: "azure",
+    };
+
+    useEffect(() => {
+        if (!projectId) return;
+        api.projects.getById(projectId).then((project) => {
+            const fmt = providerToFormat[project.gitRepository?.provider ?? project.provider];
+            if (fmt) {
+                setProjectProvider(fmt);
+                setExportFormat(fmt);
+            }
+        }).catch(() => { /* ignore */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectId]);
+
+    const availableFormats = projectProvider
+        ? ([projectProvider] as const)
+        : (["github", "gitlab", "azure"] as const);
 
     const selectedNode = nodes.find(
         (n) => n.id === selectedNodeId && CONFIG_PANEL_NODE_TYPES.has(n.type ?? ""),
@@ -382,9 +406,9 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                                     alignItems: "center",
                                     gap: 6,
                                     padding: "5px 10px",
-                                    borderRadius: "6px 0 0 6px",
+                                    borderRadius: availableFormats.length === 1 ? 6 : "6px 0 0 6px",
                                     border: "1px solid rgba(255,255,255,0.08)",
-                                    borderRight: "none",
+                                    borderRight: availableFormats.length === 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
                                     color: "rgba(200,200,220,0.75)",
                                     background: "rgba(255,255,255,0.04)",
                                     fontSize: 12,
@@ -402,28 +426,30 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                                 </svg>
                                 {formatLabels[exportFormat]}
                             </button>
-                            <button
-                                onClick={() => setExportDropdownOpen((o) => !o)}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "5px 7px",
-                                    borderRadius: "0 6px 6px 0",
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    color: "rgba(180,180,200,0.6)",
-                                    background: "rgba(255,255,255,0.04)",
-                                    cursor: "pointer",
-                                    transition: "all 0.15s",
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="m6 9 6 6 6-6" />
-                                </svg>
-                            </button>
+                            {availableFormats.length > 1 && (
+                                <button
+                                    onClick={() => setExportDropdownOpen((o) => !o)}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        padding: "5px 7px",
+                                        borderRadius: "0 6px 6px 0",
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        color: "rgba(180,180,200,0.6)",
+                                        background: "rgba(255,255,255,0.04)",
+                                        cursor: "pointer",
+                                        transition: "all 0.15s",
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </button>
+                            )}
                         </div>
-                        {exportDropdownOpen && (
+                        {exportDropdownOpen && availableFormats.length > 1 && (
                             <ul style={{
                                 position: "absolute",
                                 right: 0,
@@ -437,7 +463,7 @@ const PageGraphCanvas: React.FC<PageGraphCanvasProps> = ({ projectId, pipelineId
                                 overflow: "hidden",
                                 padding: "3px 0",
                             }}>
-                                {(["github", "gitlab", "azure"] as const).map((fmt) => (
+                                {availableFormats.map((fmt) => (
                                     <li key={fmt} style={{ listStyle: "none" }}>
                                         <button
                                             onClick={() => { setExportFormat(fmt); setExportDropdownOpen(false); }}

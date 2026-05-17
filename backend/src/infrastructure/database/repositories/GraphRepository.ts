@@ -94,7 +94,9 @@ export class GraphRepository implements IGraphRepository {
           name: j.name,
           runsOn: j.runsOn ?? "ubuntu-latest",
           steps: j.steps.map((n) => this.decryptNode(n)),
+          stepEdges: (j.stepEdges ?? []).map((e) => this.mapEdge(e)),
         })),
+        jobEdges: (s.jobEdges ?? []).map((e) => this.mapEdge(e)),
       })),
       stageEdges: (doc.stageEdges ?? []).map((e) => this.mapEdge(e)),
     };

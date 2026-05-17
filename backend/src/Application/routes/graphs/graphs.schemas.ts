@@ -73,6 +73,7 @@ const jobSchema = {
     name: { type: "string" },
     runsOn: { type: "string" },
     steps: { type: "array", items: nodeSchema },
+    stepEdges: { type: "array", items: edgeSchema },
   },
 } as const;
 
@@ -88,6 +89,7 @@ const stageSchema = {
     name: { type: "string" },
     jobs: { type: "array", items: jobSchema },
     position: positionSchema,
+    jobEdges: { type: "array", items: edgeSchema },
   },
 } as const;
 

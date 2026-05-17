@@ -2,6 +2,7 @@ import {
   IGitPlatformAdapter,
   GitRepository,
   GitUserProfile,
+  PipelineFile,
 } from "../../domain/gitconnection/IGitPlatformAdapter.js";
 import type { GitProvider } from "../../domain/gitconnection/GitConnection.js";
 
@@ -137,5 +138,21 @@ export class AzureDevOpsAdapter implements IGitPlatformAdapter {
     }
 
     return repos;
+  }
+
+  async listPipelineFiles(accessToken: string, fullName: string): Promise<PipelineFile[]> {
+    // fullName format: "org/project/repo"
+    const parts = fullName.split("/");
+    if (parts.length < 3) return [];
+    const [org, project, repo] = parts;
+    const auth = `Basic ${Buffer.from(`:${accessToken}`).toString("base64")}`;
+
+    const res = await fetch(
+      `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repo)}/items?path=azure-pipelines.yml&api-version=7.0`,
+      { headers: { Authorization: auth } },
+    );
+    if (!res.ok) return [];
+    const content = await res.text();
+    return [{ name: "azure-pipelines", path: "azure-pipelines.yml", content }];
   }
 }

@@ -205,6 +205,8 @@ export const api = {
       }),
     delete: (projectId: string, pipelineId: string) =>
       request<void>(`/api/projects/${projectId}/pipelines/${pipelineId}`, { method: "DELETE" }),
+    importFromRepo: (projectId: string) =>
+      request<Graph[]>(`/api/projects/${projectId}/pipelines/import-from-repo`, { method: "POST" }),
     pushToRepo: (
       projectId: string,
       pipelineId: string,

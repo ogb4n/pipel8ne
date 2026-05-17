@@ -8,12 +8,14 @@ import credentialRoutes from "./credentials/credentials.routes";
 import { apiKeyRoutes } from "./apikeys/apikeys.routes";
 import adminRoutes from "./admin/index";
 import gitConnectionRoutes from "./git-connections/git-connections.routes";
+import metricsRoutes from "./metrics/metrics.routes";
 
 /**
  * Enregistre toutes les routes de l'API.
  * Ajoute ici les futurs modules de routes.
  */
 export default async function registerRoutes(app: FastifyInstance) {
+  await app.register(metricsRoutes);
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(userRoutes);

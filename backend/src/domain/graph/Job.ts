@@ -1,4 +1,5 @@
 import { Node } from "./Node.js";
+import { Edge } from "./Edge.js";
 
 /**
  * A Job groups a set of steps (nodes) within a Stage.
@@ -12,4 +13,6 @@ export interface Job {
   runsOn: string;
   /** The steps (nodes) belonging to this job, executed in array order */
   steps: Node[];
+  /** Dependencies between steps within this job */
+  stepEdges?: Edge[];
 }

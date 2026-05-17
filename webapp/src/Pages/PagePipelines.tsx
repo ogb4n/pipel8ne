@@ -27,6 +27,9 @@ const PagePipelines: React.FC = () => {
     const [pushResult, setPushResult] = useState<{ filePath: string; commitUrl: string } | null>(null);
     const [pushError, setPushError] = useState<string | null>(null);
 
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ count: number } | null>(null);
+
     const fetchData = async () => {
         if (!projectId) return;
         try {
@@ -106,6 +109,21 @@ const PagePipelines: React.FC = () => {
 
     const hasLinkedRepo = Boolean(project?.gitRepository);
 
+    const handleImport = async () => {
+        if (!projectId) return;
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const created = await api.pipelines.importFromRepo(projectId);
+            setImportResult({ count: created.length });
+            await fetchData();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erreur d'import");
+        } finally {
+            setImporting(false);
+        }
+    };
+
     return (
         <div className="max-w-3xl mx-auto py-10 px-5">
             {/* Breadcrumb + Header */}
@@ -122,20 +140,55 @@ const PagePipelines: React.FC = () => {
                     </svg>
                     <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pipelines</h1>
                 </div>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-1.5 text-xs font-medium bg-accent-500 hover:bg-accent-600 text-white px-3.5 py-2 rounded-md transition-colors"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Nouvelle pipeline
-                </button>
+                <div className="flex items-center gap-2">
+                    {hasLinkedRepo && (
+                        <button
+                            onClick={() => { void handleImport(); }}
+                            disabled={importing}
+                            title="Importer les pipelines CI/CD existantes depuis le repo Git"
+                            className="flex items-center gap-1.5 text-xs font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3.5 py-2 rounded-md transition-colors disabled:opacity-50"
+                        >
+                            {importing ? (
+                                <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                            )}
+                            {importing ? "Import..." : "Importer depuis le repo"}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-1.5 text-xs font-medium bg-accent-500 hover:bg-accent-600 text-white px-3.5 py-2 rounded-md transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Nouvelle pipeline
+                    </button>
+                </div>
             </div>
 
             {error && (
                 <div className="mb-6 text-xs text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md px-3 py-2">
                     {error}
+                </div>
+            )}
+
+            {importResult && (
+                <div className="mb-6 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-md px-3 py-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    {importResult.count === 0
+                        ? "Aucune nouvelle pipeline trouvée dans le repo (déjà toutes importées ou aucun fichier CI)."
+                        : `${importResult.count} pipeline${importResult.count > 1 ? "s" : ""} importée${importResult.count > 1 ? "s" : ""} depuis le repo.`}
                 </div>
             )}
 

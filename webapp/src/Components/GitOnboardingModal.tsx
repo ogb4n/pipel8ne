@@ -80,12 +80,9 @@ export default function GitOnboardingModal({ forceOpen, onClose }: Props = {}) {
   }
 
   function handleDismiss() {
-    if (onClose) {
-      onClose();
-      return;
-    }
     localStorage.setItem(STORAGE_KEY, "1");
     setVisible(false);
+    onClose?.();
   }
 
   function handlePatConnect(provider: GitProvider) {

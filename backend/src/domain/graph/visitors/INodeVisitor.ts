@@ -9,19 +9,13 @@
  * needs updating).
  */
 import type { ShellCommandNode } from "../nodes/ShellCommandNode";
-import type { DockerNode } from "../nodes/DockerNode";
 import type { GitNode } from "../nodes/GitNode";
-import type { TestNode } from "../nodes/TestNode";
-import type { BuildNode } from "../nodes/BuildNode";
-import type { DeployNode } from "../nodes/DeployNode";
 import type { NotificationNode } from "../nodes/NotificationNode";
+import type { TriggerNode } from "../nodes/TriggerNode";
 
 export interface INodeVisitor {
+  visitTrigger(node: TriggerNode): void;
   visitShellCommand(node: ShellCommandNode): void;
-  visitDocker(node: DockerNode): void;
   visitGit(node: GitNode): void;
-  visitTest(node: TestNode): void;
-  visitBuild(node: BuildNode): void;
-  visitDeploy(node: DeployNode): void;
   visitNotification(node: NotificationNode): void;
 }

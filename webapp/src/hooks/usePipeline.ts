@@ -70,6 +70,26 @@ function jobEdgeToRF(e: GraphEdge): RFEdge {
   };
 }
 
+function stepEdgeToRF(e: GraphEdge): RFEdge {
+  return {
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: e.type ?? "default",
+    data: {},
+  };
+}
+
+function rfEdgeToGraphEdge(e: RFEdge): GraphEdge {
+  return {
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: e.type ?? "default",
+    waypoint: (e.data as { waypoint?: { x: number; y: number } } | undefined)?.waypoint,
+  };
+}
+
 /** RF pipeline-view nodes + edges → Stage[] + stageEdges.
  *  Job data is sourced from existingStages since stageCard nodes only carry name/jobCount. */
 function rfPipelineViewToStages(
@@ -122,6 +142,7 @@ function stageJobsToRFNodes(stage: Stage): RFNode[] {
       name: job.name,
       runsOn: job.runsOn,
       steps: job.steps,
+      stepEdges: job.stepEdges ?? [],
     } as unknown as Record<string, unknown>,
   }));
 }
@@ -152,12 +173,14 @@ function rfJobNodesToJobs(
         name?: string;
         runsOn?: string;
         steps?: GraphNode[];
+        stepEdges?: GraphEdge[];
       };
       return {
         id: n.id,
         name: d.name ?? "job",
         runsOn: d.runsOn ?? "ubuntu-latest",
         steps: d.steps ?? [],
+        stepEdges: d.stepEdges ?? [],
         position: n.position,
       };
     });
@@ -591,12 +614,13 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     (jobId: string) => {
       const jobNode = getNodes().find((n) => n.id === jobId);
       if (!jobNode) return;
-      const d = jobNode.data as { steps?: GraphNode[] };
+      const d = jobNode.data as { steps?: GraphNode[]; stepEdges?: GraphEdge[] };
       const fakeJob: Job = {
         id: jobId,
         name: (jobNode.data as { name?: string }).name ?? "job",
         runsOn: (jobNode.data as { runsOn?: string }).runsOn ?? "ubuntu-latest",
         steps: d.steps ?? [],
+        stepEdges: d.stepEdges ?? [],
         position: jobNode.position,
       };
 
@@ -605,9 +629,10 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
       stageCanvasEdgesRef.current = getEdges();
 
       const stepNodes = jobStepsToRFNodes(fakeJob);
+      const stepRFEdges = (fakeJob.stepEdges ?? []).map(stepEdgeToRF);
 
       setNodes(stepNodes);
-      setEdges([]);
+      setEdges(stepRFEdges);
       setActiveJobId(jobId);
 
       setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
@@ -620,10 +645,11 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     if (!activeJobId) return;
 
     const steps = rfStepNodesToSteps(getNodes());
+    const stepEdges = getEdges().map(rfEdgeToGraphEdge);
 
     // Update job data in stage canvas snapshot
     const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-      n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
+      n.id === activeJobId ? { ...n, data: { ...n.data, steps, stepEdges } } : n,
     );
 
     setNodes(updatedStageNodes);
@@ -631,7 +657,7 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     setActiveJobId(null);
 
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [activeJobId, getNodes, setNodes, setEdges, fitView]);
+  }, [activeJobId, getNodes, getEdges, setNodes, setEdges, fitView]);
 
   // ── Navigation: exit job + stage in one go ───────────────────────────────────
   const exitJobAndStage = useCallback(() => {
@@ -639,10 +665,11 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
 
     // 1. Capture step canvas
     const steps = rfStepNodesToSteps(getNodes());
+    const stepEdges = getEdges().map(rfEdgeToGraphEdge);
 
     // 2. Rebuild stage nodes with updated step data
     const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-      n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
+      n.id === activeJobId ? { ...n, data: { ...n.data, steps, stepEdges } } : n,
     );
 
     // 3. Derive jobs from updated stage nodes
@@ -679,8 +706,9 @@ export const usePipeline = (projectId?: string, pipelineId?: string) => {
     if (activeJobId) {
       // In job canvas: fold steps back into stage snapshot, then process stage
       const steps = rfStepNodesToSteps(getNodes());
+      const stepEdges = getEdges().map(rfEdgeToGraphEdge);
       const updatedStageNodes = stageCanvasNodesRef.current.map((n) =>
-        n.id === activeJobId ? { ...n, data: { ...n.data, steps } } : n,
+        n.id === activeJobId ? { ...n, data: { ...n.data, steps, stepEdges } } : n,
       );
       const { jobs, jobEdges } = rfJobNodesToJobs(updatedStageNodes, stageCanvasEdgesRef.current);
       const allStages = (pipeline?.stages ?? []).map((s) =>

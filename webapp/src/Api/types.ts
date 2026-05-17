@@ -171,6 +171,8 @@ export interface Job {
   steps: GraphNode[];
   /** Canvas position in stage view */
   position?: { x: number; y: number };
+  /** Dependencies between steps within this job */
+  stepEdges?: GraphEdge[];
 }
 export interface Stage {
   id: string;
