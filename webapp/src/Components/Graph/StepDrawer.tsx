@@ -36,11 +36,7 @@ interface StepDrawerProps {
 
 const TYPE_BADGE: Record<NodeType, { bg: string; text: string; label: string }> = {
     shell_command: { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'shell' },
-    docker: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', label: 'docker' },
     git: { bg: 'bg-orange-500/20', text: 'text-orange-300', label: 'git' },
-    test: { bg: 'bg-green-500/20', text: 'text-green-300', label: 'test' },
-    build: { bg: 'bg-violet-500/20', text: 'text-violet-300', label: 'build' },
-    deploy: { bg: 'bg-red-500/20', text: 'text-red-300', label: 'deploy' },
     notification: { bg: 'bg-pink-500/20', text: 'text-pink-300', label: 'notify' },
 };
 
@@ -71,7 +67,7 @@ const SortableStepItem: React.FC<SortableStepItemProps> = ({ step, onUpdate, onD
         text: 'text-zinc-300',
         label: step.type,
     };
-    const baseParams = (step.data.params?.baseParameters ?? {}) as Record<string, unknown>;
+    const baseParams = step.data.params?.baseParameters ?? {};
 
     const handleNameBlur = (value: string) => {
         onUpdate({ ...step, data: { ...step.data, label: value } });
@@ -229,11 +225,7 @@ const SortableStepItem: React.FC<SortableStepItemProps> = ({ step, onUpdate, onD
 
 const STEP_TYPES: NodeType[] = [
     'shell_command',
-    'docker',
     'git',
-    'test',
-    'build',
-    'deploy',
     'notification',
 ];
 

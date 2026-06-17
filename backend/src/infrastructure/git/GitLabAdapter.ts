@@ -2,6 +2,7 @@ import {
   IGitPlatformAdapter,
   GitRepository,
   GitUserProfile,
+  PipelineFile,
 } from "../../domain/gitconnection/IGitPlatformAdapter.js";
 import type { GitProvider } from "../../domain/gitconnection/GitConnection.js";
 
@@ -133,5 +134,17 @@ export class GitLabAdapter implements IGitPlatformAdapter {
     }
 
     return repos;
+  }
+
+  async listPipelineFiles(accessToken: string, fullName: string): Promise<PipelineFile[]> {
+    const encodedPath = encodeURIComponent(fullName);
+    // GitLab uses project path as ID when URL-encoded
+    const res = await fetch(
+      `${this.baseUrl}/api/v4/projects/${encodedPath}/repository/files/.gitlab-ci.yml/raw?ref=HEAD`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) return [];
+    const content = await res.text();
+    return [{ name: ".gitlab-ci", path: ".gitlab-ci.yml", content }];
   }
 }

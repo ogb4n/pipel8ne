@@ -6,14 +6,14 @@ interface Props {
     onCreated: () => void;
 }
 
-export default function CreateUserModal({ onClose, onCreated }: Props) {
+export default function CreateUserModal({ onClose, onCreated }: Readonly<Props>) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
 

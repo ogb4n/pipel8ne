@@ -2,6 +2,7 @@ import {
   IGitPlatformAdapter,
   GitRepository,
   GitUserProfile,
+  PipelineFile,
 } from "../../domain/gitconnection/IGitPlatformAdapter.js";
 import type { GitProvider } from "../../domain/gitconnection/GitConnection.js";
 
@@ -128,5 +129,48 @@ export class GitHubAdapter implements IGitPlatformAdapter {
     }
 
     return repos;
+  }
+
+  async listPipelineFiles(accessToken: string, fullName: string): Promise<PipelineFile[]> {
+    const [owner, repo] = fullName.split("/");
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github+json",
+    };
+
+    const dirRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/.github/workflows`,
+      { headers },
+    );
+    if (!dirRes.ok) return [];
+
+    const entries = (await dirRes.json()) as Array<{
+      name: string;
+      path: string;
+      type: string;
+      url: string;
+    }>;
+
+    const files = entries.filter(
+      (e) => e.type === "file" && (e.name.endsWith(".yml") || e.name.endsWith(".yaml")),
+    );
+
+    const results: PipelineFile[] = [];
+    for (const file of files) {
+      const fileRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
+        { headers },
+      );
+      if (!fileRes.ok) continue;
+      const data = (await fileRes.json()) as { content: string; encoding: string };
+      const content = Buffer.from(data.content, "base64").toString("utf-8");
+      results.push({
+        name: file.name.replace(/\.(ya?ml)$/i, ""),
+        path: file.path,
+        content,
+      });
+    }
+
+    return results;
   }
 }

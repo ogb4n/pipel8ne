@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { ISecretsService } from "../domain/graph/ISecretsService.js";
 
 const ALGORITHM = "aes-256-gcm";
@@ -14,7 +14,7 @@ export class AesSecretsService implements ISecretsService {
 
   constructor() {
     const hex = process.env.SECRETS_ENCRYPTION_KEY;
-    if (!hex || hex.length !== 64) {
+    if (hex?.length !== 64) {
       throw new Error("SECRETS_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)");
     }
     this.key = Buffer.from(hex, "hex");

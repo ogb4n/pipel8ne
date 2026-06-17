@@ -11,12 +11,9 @@
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
-import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
-import type { TestNode } from "../nodes/TestNode.js";
-import type { BuildNode } from "../nodes/BuildNode.js";
-import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 
 export class ValidationVisitor implements INodeVisitor {
   private readonly _errors: string[] = [];
@@ -47,6 +44,18 @@ export class ValidationVisitor implements INodeVisitor {
 
   // ── visit methods ────────────────────────────────────────────────────────────
 
+  visitTrigger(node: TriggerNode): void {
+    this.require(node.id, "triggerParams.triggerType", node.triggerParams?.triggerType);
+
+    const { triggerType, schedule, branches } = node.triggerParams ?? {};
+    if (triggerType === "schedule" && !schedule) {
+      this._errors.push(`Node "${node.id}": "triggerParams.schedule" is required for schedule trigger.`);
+    }
+    if ((triggerType === "push" || triggerType === "pull_request") && !branches?.length) {
+      this._errors.push(`Node "${node.id}": "triggerParams.branches" should not be empty for ${triggerType} trigger.`);
+    }
+  }
+
   visitShellCommand(node: ShellCommandNode): void {
     this.require(node.id, "shellParams.shell", node.shellParams?.shell);
     this.require(node.id, "shellParams.script", node.shellParams?.script);
@@ -54,26 +63,6 @@ export class ValidationVisitor implements INodeVisitor {
     if (node.shellParams?.timeoutSeconds !== undefined && node.shellParams.timeoutSeconds <= 0) {
       this._errors.push(
         `Node "${node.id}": "shellParams.timeoutSeconds" must be a positive number.`,
-      );
-    }
-  }
-
-  visitDocker(node: DockerNode): void {
-    this.require(node.id, "dockerParams.action", node.dockerParams?.action);
-
-    const action = node.dockerParams?.action;
-    if (action === "build") {
-      this.require(node.id, "dockerParams.dockerfile", node.dockerParams.dockerfile);
-      this.require(node.id, "dockerParams.buildContext", node.dockerParams.buildContext);
-    }
-    if (action === "push" && !node.dockerParams?.registry) {
-      this._errors.push(
-        `Node "${node.id}": "dockerParams.registry" is required for "push" action.`,
-      );
-    }
-    if ((action === "compose_up" || action === "compose_down") && !node.dockerParams?.composeFile) {
-      this._errors.push(
-        `Node "${node.id}": "dockerParams.composeFile" is required for "${action}" action.`,
       );
     }
   }
@@ -87,45 +76,6 @@ export class ValidationVisitor implements INodeVisitor {
     }
     if (action === "tag") {
       this.require(node.id, "gitParams.tagName", node.gitParams?.tagName);
-    }
-  }
-
-  visitTest(node: TestNode): void {
-    this.require(node.id, "testParams.runner", node.testParams?.runner);
-
-    if (node.testParams?.runner === "custom") {
-      this.require(node.id, "testParams.command", node.testParams.command);
-    }
-    if (
-      node.testParams?.coverageThreshold !== undefined &&
-      (node.testParams.coverageThreshold < 0 || node.testParams.coverageThreshold > 100)
-    ) {
-      this._errors.push(
-        `Node "${node.id}": "testParams.coverageThreshold" must be between 0 and 100.`,
-      );
-    }
-  }
-
-  visitBuild(node: BuildNode): void {
-    this.require(node.id, "buildParams.tool", node.buildParams?.tool);
-
-    if (node.buildParams?.tool === "custom") {
-      this.require(node.id, "buildParams.command", node.buildParams.command);
-    }
-  }
-
-  visitDeploy(node: DeployNode): void {
-    this.require(node.id, "deployParams.target", node.deployParams?.target);
-    this.require(node.id, "deployParams.environment", node.deployParams?.environment);
-
-    const target = node.deployParams?.target;
-    if (target === "ssh") {
-      this.require(node.id, "deployParams.sshHost", node.deployParams.sshHost);
-      this.require(node.id, "deployParams.sshUser", node.deployParams.sshUser);
-      this.require(node.id, "deployParams.remotePath", node.deployParams.remotePath);
-    }
-    if (target === "kubernetes") {
-      this.require(node.id, "deployParams.manifestPath", node.deployParams.manifestPath);
     }
   }
 

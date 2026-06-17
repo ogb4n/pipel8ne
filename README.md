@@ -134,14 +134,14 @@ The frontend dev server starts at `http://localhost:5173` and proxies API reques
 
 The full documentation is available at **[pipel8ne.docs.ogb4n.com](https://pipel8ne.docs.ogb4n.com)**.
 
-| Topic | Online docs | Source |
-| ----- | ----------- | ------ |
-| Architecture | [Architecture](https://pipel8ne.docs.ogb4n.com/architecture) | [docs/architecture.md](docs/architecture.md) |
+| Topic             | Online docs                                                            | Source                                                 |
+| ----------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
+| Architecture      | [Architecture](https://pipel8ne.docs.ogb4n.com/architecture)           | [docs/architecture.md](docs/architecture.md)           |
 | Pipeline concepts | [Pipeline concepts](https://pipel8ne.docs.ogb4n.com/pipeline-concepts) | [docs/pipeline-concepts.md](docs/pipeline-concepts.md) |
-| API reference | [API reference](https://pipel8ne.docs.ogb4n.com/api) | [docs/api.md](docs/api.md) |
-| Development guide | [Development guide](https://pipel8ne.docs.ogb4n.com/development) | [docs/development.md](docs/development.md) |
-| Deployment | [Deployment](https://pipel8ne.docs.ogb4n.com/deployment) | [docs/deployment.md](docs/deployment.md) |
-| Contributing | [Contributing](https://pipel8ne.docs.ogb4n.com/contributing) | [docs/contributing.md](docs/contributing.md) |
+| API reference     | [API reference](https://pipel8ne.docs.ogb4n.com/api)                   | [docs/api.md](docs/api.md)                             |
+| Development guide | [Development guide](https://pipel8ne.docs.ogb4n.com/development)       | [docs/development.md](docs/development.md)             |
+| Deployment        | [Deployment](https://pipel8ne.docs.ogb4n.com/deployment)               | [docs/deployment.md](docs/deployment.md)               |
+| Contributing      | [Contributing](https://pipel8ne.docs.ogb4n.com/contributing)           | [docs/contributing.md](docs/contributing.md)           |
 
 ## Contributing
 
@@ -152,3 +152,5 @@ Read the [contributing guide](https://pipel8ne.docs.ogb4n.com/contributing) befo
 ## License
 
 [Sustainable Use License](LICENSE.md)
+
+pipel8ne is distributed under a Fair-code / Sustainable Use License. You can use it, modify it, and self-host it internally at no cost, but you are restricted from offering pipel8ne as a commercial managed service.

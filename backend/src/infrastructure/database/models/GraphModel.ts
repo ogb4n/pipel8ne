@@ -70,6 +70,7 @@ const JobSchema = new Schema(
     name: { type: String, required: true, default: "job" },
     runsOn: { type: String, required: true, default: "ubuntu-latest" },
     steps: { type: [NodeSchema], default: [] },
+    stepEdges: { type: [EdgeSchema], default: [] },
   },
   { _id: false },
 );
@@ -84,6 +85,7 @@ const StageSchema = new Schema(
     name: { type: String, required: true, default: "stage" },
     jobs: { type: [JobSchema], default: [] },
     position: { type: PositionSchema, required: true, default: () => ({ x: 0, y: 0 }) },
+    jobEdges: { type: [EdgeSchema], default: [] },
   },
   { _id: false },
 );
@@ -126,6 +128,7 @@ type JobDoc = {
   name: string;
   runsOn: string;
   steps: NodeDoc[];
+  stepEdges?: EdgeDoc[];
 };
 
 type StageDoc = {
@@ -133,6 +136,7 @@ type StageDoc = {
   name: string;
   jobs: JobDoc[];
   position: { x: number; y: number };
+  jobEdges?: EdgeDoc[];
 };
 
 export interface IGraphDocument extends Document {

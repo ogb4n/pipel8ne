@@ -19,7 +19,7 @@ export interface NodeConfig {
 export const nodeConfig: Record<NodeType, NodeConfig> = {
   shell_command: {
     icon: "$_",
-    color: "#52525b",
+    color: "#2563eb",
     label: "Shell",
     description: "Exécute un script bash / sh / PowerShell",
     getSummary: (p) => {
@@ -27,24 +27,6 @@ export const nodeConfig: Record<NodeType, NodeConfig> = {
       return `${p.shell ?? "bash"}: ${first}`;
     },
     defaultParams: { shell: "bash", script: "echo hello" },
-  },
-
-  docker: {
-    icon: "🐳",
-    color: "#2563eb",
-    label: "Docker",
-    description: "Build, push, pull ou run de containers",
-    getSummary: (p) => {
-      const action = (p.action as string) ?? "?";
-      if (action === "build")
-        return `build → ${((p.tags as string[]) ?? []).join(", ") || "untagged"}`;
-      if (action === "push") return `push → ${p.registry ?? "registry"}`;
-      if (action === "run") return `run ${p.image ?? "?"}`;
-      if (action === "compose_up" || action === "compose_down")
-        return `${action} (${p.composeFile ?? "docker-compose.yml"})`;
-      return action;
-    },
-    defaultParams: { action: "build", dockerfile: "Dockerfile", buildContext: "." },
   },
 
   git: {
@@ -62,48 +44,6 @@ export const nodeConfig: Record<NodeType, NodeConfig> = {
     defaultParams: { action: "clone", repositoryUrl: "", directory: "." },
   },
 
-  test: {
-    icon: "✅",
-    color: "#16a34a",
-    label: "Test",
-    description: "Lance une suite de tests",
-    getSummary: (p) => {
-      const runner =
-        p.runner === "custom" ? ((p.command as string) ?? "custom") : ((p.runner as string) ?? "?");
-      const cov = p.coverageThreshold !== undefined ? ` | cov ≥ ${p.coverageThreshold}%` : "";
-      return `${runner}${cov}`;
-    },
-    defaultParams: { runner: "jest" },
-  },
-
-  build: {
-    icon: "🔨",
-    color: "#ca8a04",
-    label: "Build",
-    description: "Compile / package (npm, cargo, go…)",
-    getSummary: (p) => {
-      const tool =
-        p.tool === "custom" ? ((p.command as string) ?? "custom") : ((p.tool as string) ?? "?");
-      return `${tool}${p.target ? ` — ${p.target}` : ""}${p.outputPath ? ` → ${p.outputPath}` : ""}`;
-    },
-    defaultParams: { tool: "npm", target: "build" },
-  },
-
-  deploy: {
-    icon: "🚀",
-    color: "#4f46e5",
-    label: "Deploy",
-    description: "Déploie sur k8s, AWS, GCP, SSH…",
-    getSummary: (p) => {
-      const target = (p.target as string) ?? "?";
-      const env = (p.environment as string) ?? "?";
-      if (target === "kubernetes") return `k8s / ${p.namespace ?? "default"} [${env}]`;
-      if (target === "ssh") return `ssh ${p.sshUser ?? "?"}@${p.sshHost ?? "?"}`;
-      return `${target} / ${env}${p.rolloutStrategy ? ` [${p.rolloutStrategy}]` : ""}`;
-    },
-    defaultParams: { target: "kubernetes", environment: "staging", namespace: "default" },
-  },
-
   notification: {
     icon: "🔔",
     color: "#db2777",
@@ -112,5 +52,4 @@ export const nodeConfig: Record<NodeType, NodeConfig> = {
     getSummary: (p) => `${p.channel ?? "?"} — ${p.notifyOn ?? "always"}`,
     defaultParams: { channel: "slack", notifyOn: "on_failure", message: "Pipeline {{status}}" },
   },
-
 };

@@ -10,6 +10,8 @@ interface RepoListProps {
   loading: boolean;
   connectedProviders: GitProvider[];
   onSelectRepo: (repo: RepoWithProvider) => void;
+  /** fullName → projectId for repos that already have a linked project */
+  linkedProjectsByFullName?: Record<string, string>;
 }
 
 const PAGE_SIZE = 6;
@@ -56,6 +58,7 @@ const RepoList: React.FC<RepoListProps> = ({
   loading,
   connectedProviders,
   onSelectRepo,
+  linkedProjectsByFullName = {},
 }) => {
   const [activeTab, setActiveTab] = useState<GitProvider | "all">("all");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | "public" | "private">("all");
@@ -253,48 +256,65 @@ const RepoList: React.FC<RepoListProps> = ({
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {pageRepos.map((repo) => (
-              <button
-                key={`${repo.provider}-${repo.id}`}
-                onClick={() => onSelectRepo(repo)}
-                className="text-left border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 px-4 py-3 hover:border-accent-300 dark:hover:border-accent-700 hover:bg-accent-50/50 dark:hover:bg-accent-950/10 transition-colors group"
-              >
-                <div className="flex items-start gap-2.5">
-                  <div className="shrink-0 mt-0.5">
-                    <ProviderIcon provider={repo.provider} size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate group-hover:text-accent-500 dark:group-hover:text-accent-400 transition-colors">
-                        {repo.fullName}
-                      </p>
-                      <span
-                        className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${repo.isPrivate
-                          ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                          : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
-                          }`}
-                      >
-                        {repo.isPrivate ? "privé" : "public"}
-                      </span>
+            {pageRepos.map((repo) => {
+              const isLinked = Boolean(linkedProjectsByFullName[repo.fullName]);
+              return (
+                <button
+                  key={`${repo.provider}-${repo.id}`}
+                  onClick={() => onSelectRepo(repo)}
+                  className={`text-left border rounded-xl bg-white dark:bg-zinc-900 px-4 py-3 transition-colors group ${
+                    isLinked
+                      ? "border-accent-300 dark:border-accent-800 hover:border-accent-400 dark:hover:border-accent-600 hover:bg-accent-50/50 dark:hover:bg-accent-950/10"
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-accent-300 dark:hover:border-accent-700 hover:bg-accent-50/50 dark:hover:bg-accent-950/10"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="shrink-0 mt-0.5">
+                      <ProviderIcon provider={repo.provider} size={16} />
                     </div>
-                    {repo.description && (
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 line-clamp-1">
-                        {repo.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-600">
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M6 3v10M10 3v10" />
-                          <path d="M3 6h10M3 10h10" />
-                        </svg>
-                        {repo.defaultBranch}
-                      </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate group-hover:text-accent-500 dark:group-hover:text-accent-400 transition-colors">
+                          {repo.fullName}
+                        </p>
+                        <span
+                          className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${repo.isPrivate
+                            ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                            : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                            }`}
+                        >
+                          {repo.isPrivate ? "privé" : "public"}
+                        </span>
+                        {isLinked && (
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium bg-accent-50 text-accent-600 dark:bg-accent-950/30 dark:text-accent-400 border border-accent-200 dark:border-accent-800">
+                            Connecté
+                          </span>
+                        )}
+                      </div>
+                      {repo.description && (
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 line-clamp-1">
+                          {repo.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-600">
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 3v10M10 3v10" />
+                            <path d="M3 6h10M3 10h10" />
+                          </svg>
+                          {repo.defaultBranch}
+                        </span>
+                        {isLinked && (
+                          <span className="text-[10px] text-accent-500 dark:text-accent-400">
+                            Voir les pipelines →
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Pagination slider */}

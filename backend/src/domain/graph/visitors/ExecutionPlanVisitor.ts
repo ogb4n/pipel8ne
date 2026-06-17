@@ -11,12 +11,9 @@
  */
 import type { INodeVisitor } from "./INodeVisitor.js";
 import type { ShellCommandNode } from "../nodes/ShellCommandNode.js";
-import type { DockerNode } from "../nodes/DockerNode.js";
 import type { GitNode } from "../nodes/GitNode.js";
-import type { TestNode } from "../nodes/TestNode.js";
-import type { BuildNode } from "../nodes/BuildNode.js";
-import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 
 export interface ExecutionStep {
   order: number;
@@ -74,6 +71,15 @@ export class ExecutionPlanVisitor implements INodeVisitor {
 
   // ── visit methods ────────────────────────────────────────────────────────────
 
+  visitTrigger(node: TriggerNode): void {
+    const p = node.triggerParams;
+    let detail = `Trigger: ${p.triggerType}`;
+    if (p.branches?.length) detail += ` (branches: ${p.branches.join(", ")})`;
+    if (p.schedule) detail += ` (cron: ${p.schedule})`;
+    if (p.tags?.length) detail += ` (tags: ${p.tags.join(", ")})`;
+    this.addStep(node.id, node.type, node.data.label, detail);
+  }
+
   visitShellCommand(node: ShellCommandNode): void {
     const p = node.shellParams ?? {};
     const preview = (p.script ?? "").split("\n")[0].slice(0, 60);
@@ -84,34 +90,6 @@ export class ExecutionPlanVisitor implements INodeVisitor {
       `Run ${p.shell ?? "bash"} script: "${preview}${p.script?.length > 60 ? "…" : ""}"`,
       Object.keys(node.data.secrets ?? {}),
     );
-  }
-
-  visitDocker(node: DockerNode): void {
-    const p = node.dockerParams ?? {};
-    let detail: string;
-    switch (p.action) {
-      case "build":
-        detail = `Build image from ${p.dockerfile ?? "Dockerfile"} (tags: ${(p.tags ?? []).join(", ") || "none"})`;
-        break;
-      case "push":
-        detail = `Push image to ${p.registry ?? "registry"}`;
-        break;
-      case "pull":
-        detail = `Pull image ${p.image ?? "?"}`;
-        break;
-      case "run":
-        detail = `Run container from ${p.image ?? "?"} — cmd: ${p.command ?? "(default)"}`;
-        break;
-      case "compose_up":
-        detail = `docker compose up (${p.composeFile ?? "docker-compose.yml"})`;
-        break;
-      case "compose_down":
-        detail = `docker compose down (${p.composeFile ?? "docker-compose.yml"})`;
-        break;
-      default:
-        detail = `docker ${p.action}`;
-    }
-    this.addStep(node.id, node.type, node.data.label, detail, Object.keys(node.data.secrets ?? {}));
   }
 
   visitGit(node: GitNode): void {
@@ -138,49 +116,7 @@ export class ExecutionPlanVisitor implements INodeVisitor {
     }
     this.addStep(node.id, node.type, node.data.label, detail, Object.keys(node.data.secrets ?? {}));
   }
-
-  visitTest(node: TestNode): void {
-    const p = node.testParams ?? {};
-    const runner = p.runner === "custom" ? (p.command ?? "custom") : p.runner;
-    const coverage =
-      p.coverageThreshold !== undefined ? ` (coverage ≥ ${p.coverageThreshold}%)` : "";
-    this.addStep(
-      node.id,
-      node.type,
-      node.data.label,
-      `Run tests with ${runner}${p.testPattern ? ` matching "${p.testPattern}"` : ""}${coverage}`,
-    );
-  }
-
-  visitBuild(node: BuildNode): void {
-    const p = node.buildParams ?? {};
-    const tool = p.tool === "custom" ? (p.command ?? "custom") : p.tool;
-    const target = p.target ? ` (target: ${p.target})` : "";
-    this.addStep(
-      node.id,
-      node.type,
-      node.data.label,
-      `Build with ${tool}${target}${p.outputPath ? ` → ${p.outputPath}` : ""}`,
-    );
-  }
-
-  visitDeploy(node: DeployNode): void {
-    const p = node.deployParams ?? {};
-    let detail: string;
-    switch (p.target) {
-      case "kubernetes":
-        detail = `Deploy to Kubernetes (ns: ${p.namespace ?? "default"}, manifests: ${p.manifestPath ?? "?"})`;
-        break;
-      case "ssh":
-        detail = `Deploy via SSH to ${p.sshUser ?? "?"}@${p.sshHost ?? "?"} → ${p.remotePath ?? "?"}`;
-        break;
-      default:
-        detail = `Deploy to ${p.target} — env: ${p.environment ?? "?"}`;
-    }
-    if (p.rolloutStrategy) detail += ` [${p.rolloutStrategy}]`;
-    this.addStep(node.id, node.type, node.data.label, detail, Object.keys(node.data.secrets ?? {}));
-  }
-
+  
   visitNotification(node: NotificationNode): void {
     const p = node.notificationParams ?? {};
     this.addStep(
