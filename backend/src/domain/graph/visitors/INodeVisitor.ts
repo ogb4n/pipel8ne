@@ -15,6 +15,7 @@ import type { TestNode } from "../nodes/TestNode";
 import type { BuildNode } from "../nodes/BuildNode";
 import type { DeployNode } from "../nodes/DeployNode";
 import type { NotificationNode } from "../nodes/NotificationNode";
+import type { TriggerNode } from "../nodes/TriggerNode";
 
 export interface INodeVisitor {
   visitShellCommand(node: ShellCommandNode): void;
@@ -24,4 +25,5 @@ export interface INodeVisitor {
   visitBuild(node: BuildNode): void;
   visitDeploy(node: DeployNode): void;
   visitNotification(node: NotificationNode): void;
+  visitTrigger(node: TriggerNode): void;
 }

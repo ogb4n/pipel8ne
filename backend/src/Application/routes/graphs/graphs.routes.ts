@@ -11,6 +11,7 @@ import {
   updatePipelineBodySchema,
   notFoundSchema,
 } from "./graphs.schemas.js";
+import type { TriggerType } from "../../../domain/graph/nodes/TriggerNode.js";
 
 interface ProjectParams {
   projectId: string;
@@ -27,7 +28,7 @@ interface CreatePipelineBody {
 
 interface UpdatePipelineBody {
   status: "draft" | "active";
-  trigger?: { triggerType: string; branches?: string[]; schedule?: string; tags?: string[] };
+  trigger?: { triggerType: TriggerType; branches?: string[]; schedule?: string; tags?: string[] };
   viewport: { x: number; y: number; zoom: number };
   stages: Array<{
     id: string;

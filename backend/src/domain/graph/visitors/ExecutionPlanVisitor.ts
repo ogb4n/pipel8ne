@@ -17,6 +17,7 @@ import type { TestNode } from "../nodes/TestNode.js";
 import type { BuildNode } from "../nodes/BuildNode.js";
 import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 
 export interface ExecutionStep {
   order: number;
@@ -192,4 +193,6 @@ export class ExecutionPlanVisitor implements INodeVisitor {
     );
   }
 
+  /** The trigger starts the pipeline: it is not a step of any job. */
+  visitTrigger(_node: TriggerNode): void {}
 }
