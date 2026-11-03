@@ -17,6 +17,7 @@ import type { TestNode } from "../nodes/TestNode.js";
 import type { BuildNode } from "../nodes/BuildNode.js";
 import type { DeployNode } from "../nodes/DeployNode.js";
 import type { NotificationNode } from "../nodes/NotificationNode.js";
+import type { TriggerNode } from "../nodes/TriggerNode.js";
 
 export class ValidationVisitor implements INodeVisitor {
   private readonly _errors: string[] = [];
@@ -135,4 +136,6 @@ export class ValidationVisitor implements INodeVisitor {
     this.require(node.id, "notificationParams.message", node.notificationParams?.message);
   }
 
+  /** The trigger is validated at pipeline level in GraphService, not as a step. */
+  visitTrigger(_node: TriggerNode): void {}
 }

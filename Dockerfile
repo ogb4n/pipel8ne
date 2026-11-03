@@ -4,7 +4,7 @@ FROM node:20-alpine AS webapp-builder
 WORKDIR /app/webapp
 
 COPY webapp/package.json webapp/package-lock.json* ./
-RUN rm -f package-lock.json && npm install
+RUN npm ci
 
 COPY webapp/ ./
 RUN npm run build

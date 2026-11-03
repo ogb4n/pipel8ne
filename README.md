@@ -54,16 +54,24 @@ Most CI/CD tools force you to write and maintain configuration files by hand. pi
    cd pipel8ne
    ```
 
-2. Create a `.env` file at the root:
+2. Create the backend environment file (the `backend` service reads `backend/.env`, not a `.env` at the root; `DATABASE_URL` is set by `docker-compose.yml`):
 
-   ```env
-   JWT_SECRET=your_secret_here
-   SECRETS_ENCRYPTION_KEY=your_32_char_key_here
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+   Then set the two secrets in `backend/.env`. `SECRETS_ENCRYPTION_KEY` must be exactly 64 hexadecimal characters (32 bytes), otherwise the server refuses to start:
+
+   ```bash
+   # JWT_SECRET
+   node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+   # SECRETS_ENCRYPTION_KEY
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
 3. Start the stack:
    ```bash
-   docker compose up
+   docker compose up -d --build
    ```
 
 The app will be available at `http://localhost:3000`.
